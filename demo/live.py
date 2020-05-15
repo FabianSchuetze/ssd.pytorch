@@ -1,10 +1,12 @@
-from __future__ import print_function
+r"""
+Connects to the camera
+"""
+import argparse
+import time
 import torch
 from torch.autograd import Variable
 import cv2
-import time
 from imutils.video import FPS, WebcamVideoStream
-import argparse
 
 parser = argparse.ArgumentParser(description='Single Shot MultiBox Detection')
 parser.add_argument('--weights', default='weights/ssd_300_VOC0712.pth',
@@ -75,8 +77,9 @@ if __name__ == '__main__':
     from ssd import build_ssd
 
     net = build_ssd('test', 300, 21)    # initialize SSD
-    net.load_state_dict(torch.load(args.weights))
-    transform = BaseTransform(net.size, (104/256.0, 117/256.0, 123/256.0))
+    net.load_state_dict(torch.load(args.weights, map_location='cpu'))
+    transform = BaseTransform(
+        net.size, (104 / 256.0, 117 / 256.0, 123 / 256.0))
 
     fps = FPS().start()
     cv2_demo(net.eval(), transform)

@@ -1,9 +1,7 @@
-from data import *
-from utils.augmentations import SSDAugmentation
-from layers.modules import MultiBoxLoss
-from ssd import build_ssd
+r"""
+Trains the model
+"""
 import os
-import sys
 import time
 import torch
 from torch.autograd import Variable
@@ -12,9 +10,23 @@ import torch.optim as optim
 import torch.backends.cudnn as cudnn
 import torch.nn.init as init
 import torch.utils.data as data
-import numpy as np
 import argparse
+from data import *
+from utils.augmentations import SSDAugmentation
+from layers.modules import MultiBoxLoss
+from ssd import build_ssd
+import random
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 
+def seed_torch(seed=1029):
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
 
 def str2bool(v):
     return v.lower() in ("yes", "true", "t", "1")
@@ -23,8 +35,16 @@ def str2bool(v):
 parser = argparse.ArgumentParser(
     description='Single Shot MultiBox Detector Training With Pytorch')
 train_set = parser.add_mutually_exclusive_group()
-parser.add_argument('--dataset', default='VOC', choices=['VOC', 'COCO'],
-                    type=str, help='VOC or COCO')
+parser.add_argument(
+    '--dataset',
+    default='VOC',
+    choices=[
+        'VOC',
+        'COCO',
+        'Faces'],
+    type=str,
+    help='VOC, COCO or Faces')
+
 parser.add_argument('--dataset_root', default=VOC_ROOT,
                     help='Dataset root directory path')
 parser.add_argument('--basenet', default='vgg16_reducedfc.pth',
@@ -53,6 +73,21 @@ parser.add_argument('--save_folder', default='weights/',
                     help='Directory for saving checkpoint models')
 args = parser.parse_args()
 
+def _add_patch(rec, axis, color):
+    width, height = rec[2] - rec[0], rec[3] - rec[1]
+    patch = patches.Rectangle((rec[0], rec[1]), width, height, linewidth=1,
+                              edgecolor=color, facecolor='none')
+    axis.add_patch(patch)
+
+# TODO: Find good way to add label names
+def _visualize_box(img, boxes) -> None:
+    """
+    Returns the list of picutres as the result
+    """
+    fig, axis = plt.subplots()
+    axis.imshow(img)
+    for rec in np.array(boxes):
+        _add_patch(rec, axis, color='g')
 
 if torch.cuda.is_available():
     if args.cuda:
@@ -69,6 +104,8 @@ if not os.path.exists(args.save_folder):
 
 
 def train():
+    # import pdb
+    # pdb.set_trace()
     if args.dataset == 'COCO':
         if args.dataset_root == VOC_ROOT:
             if not os.path.exists(COCO_ROOT):
@@ -87,6 +124,10 @@ def train():
         dataset = VOCDetection(root=args.dataset_root,
                                transform=SSDAugmentation(cfg['min_dim'],
                                                          MEANS))
+    elif args.dataset == 'Faces':
+        cfg = faces
+        dataset = FacesDB('/home/fabian/data/TS/TCLObjectDetectionDatabase/tcl3_data.xml',
+                          )
 
     if args.visdom:
         import visdom
@@ -142,6 +183,14 @@ def train():
         iter_plot = create_vis_plot('Iteration', 'Loss', vis_title, vis_legend)
         epoch_plot = create_vis_plot('Epoch', 'Loss', vis_title, vis_legend)
 
+    torch.manual_seed(12345)
+    seed_torch()
+    import pdb; pdb.set_trace()
+    size = len(dataset)
+    all_indices = torch.randperm(size).tolist()
+    cutoff = int(size * 0.8)
+    train = all_indices[:cutoff]
+    dataset = data.Subset(dataset, train)
     data_loader = data.DataLoader(dataset, args.batch_size,
                                   num_workers=args.num_workers,
                                   shuffle=True, collate_fn=detection_collate,
@@ -162,7 +211,13 @@ def train():
             adjust_learning_rate(optimizer, args.gamma, step_index)
 
         # load train data
-        images, targets = next(batch_iterator)
+        # images, targets = next(batch_iterator)
+        try:
+            images, targets = next(batch_iterator)
+        except StopIteration:
+            batch_iterator = iter(data_loader)
+            images, targets = next(batch_iterator)
+        # import pdb; pdb.set_trace()
 
         if args.cuda:
             images = Variable(images.cuda())
@@ -180,12 +235,17 @@ def train():
         loss.backward()
         optimizer.step()
         t1 = time.time()
-        loc_loss += loss_l.data[0]
-        conf_loss += loss_c.data[0]
+        loc_loss += loss_l.item()
+        conf_loss += loss_c.item()
 
         if iteration % 10 == 0:
             print('timer: %.4f sec.' % (t1 - t0))
-            print('iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.data[0]), end=' ')
+            print(
+                'iter ' +
+                repr(iteration) +
+                ' || Loss: %.4f ||' %
+                (loss.item()),
+                end=' ')
 
         if args.visdom:
             update_vis_plot(iteration, loss_l.data[0], loss_c.data[0],

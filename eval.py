@@ -11,10 +11,16 @@ import torch.backends.cudnn as cudnn
 from torch.autograd import Variable
 from data import VOC_ROOT, VOCAnnotationTransform, VOCDetection, BaseTransform
 from data import VOC_CLASSES as labelmap
+from data import FacesDB
+from data import *
 import torch.utils.data as data
+from utils.augmentations import SSDAugmentation
 
 from ssd import build_ssd
+from chainercv.evaluations import eval_detection_coco, \
+    eval_instance_segmentation_coco
 
+import random
 import sys
 import os
 import time
@@ -22,12 +28,22 @@ import argparse
 import numpy as np
 import pickle
 import cv2
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 
 if sys.version_info[0] == 2:
     import xml.etree.cElementTree as ET
 else:
     import xml.etree.ElementTree as ET
 
+def seed_torch(seed=1029):
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
 
 def str2bool(v):
     return v.lower() in ("yes", "true", "t", "1")
@@ -50,6 +66,7 @@ parser.add_argument('--voc_root', default=VOC_ROOT,
                     help='Location of VOC root directory')
 parser.add_argument('--cleanup', default=True, type=str2bool,
                     help='Cleanup and remove results files following eval')
+parser.add_argument('--dataset', type=str, help='Dataset root directory path')
 
 args = parser.parse_args()
 
@@ -224,7 +241,92 @@ def voc_ap(rec, prec, use_07_metric=True):
         ap = np.sum((mrec[i + 1] - mrec[i]) * mpre[i + 1])
     return ap
 
+def convert_to_box(boxes):
+    # import pdb; pdb.set_trace()
+    results_boxes = None
+    for idx, box in enumerate(boxes):
+        if len(box) > 0:
+            keep = box[box[:, 4] > 0.5]
+            keep_box = keep[:, [1, 0, 3, 2]]
+            label = np.ones(len(keep), dtype=np.int32)*idx
+            score = keep[:, 4]
+            if results_boxes is None:
+                results_boxes = np.copy(keep_box)
+                results_labels = np.copy(label)
+                results_scores = np.copy(score)
+            elif len(keep_box) > 0:
+                results_boxes = np.vstack([results_boxes, keep_box])
+                results_labels = np.append(results_labels, label)
+                results_scores = np.append(results_scores, score)
+    return results_boxes, results_labels, results_scores
 
+def convert_gt(gt):
+    """
+    Convert the result to a useful from
+    """
+    boxes = gt[:, :4]
+    boxes[:, 0] *= 300
+    boxes[:, 2] *= 300
+    boxes[:, 1] *= 300
+    boxes[:, 3] *= 300
+    boxes = boxes[:, [1, 0, 3, 2]]
+    label = np.array(gt[:, 4] + 1, dtype=np.int32)
+    return boxes, label
+
+def _add_patch(rec, axis, color):
+    width, height = rec[2] - rec[0], rec[3] - rec[1]
+    patch = patches.Rectangle((rec[0], rec[1]), width, height, linewidth=1,
+                              edgecolor=color, facecolor='none')
+    axis.add_patch(patch)
+
+# TODO: Find good way to add label names
+def _visualize_box(img, boxes) -> None:
+    """
+    Returns the list of picutres as the result
+    """
+    fig, axis = plt.subplots()
+    axis.imshow(img)
+    for rec in np.array(boxes):
+        _add_patch(rec, axis, color='g')
+
+def eval_boxes(predictions, dataset, indices):
+    """Returns the coco evaluation metric for box detection.
+
+    Parameters
+    ----------
+    predictions: List[Dict]
+        The predictions. Length of the list indicates the number of samples.
+        Each element in the list are the predictions. Keys must be 'boxes',
+        'scores', and 'labels'.
+
+    gts: List[Dict]
+        The gts. Length of the list indicates the number of samples.
+        Each element in the list are the predictions. Keys must be 'boxes',
+        'scores', and 'labels'.
+
+    Returns
+    -------
+    eval: Dict:
+        The results according to the coco metric. At IoU=0.5: VOC metric.
+    """
+    import pdb; pdb.set_trace()
+    pred_boxes, pred_labels, pred_scores = [], [], []
+    gt_boxes, gt_labels = [], []
+    predictions = list(zip(*predictions))
+    gts = [dataset[i][1] for i in indices]
+    # sizes = [dataset.pull_item(i)[2:] for i in range(len(dataset))]
+    images = [dataset[i][0] for i in indices]
+    for pred, gt in zip(predictions, gts):
+        tmp_boxes, tmp_labels, tmp_scores = convert_to_box(pred)
+        pred_boxes.append(tmp_boxes)
+        pred_labels.append(tmp_labels)
+        pred_scores.append(tmp_scores)
+        tmp_boxes, tmp_labels = convert_gt(np.array(gt))
+        gt_labels.append(tmp_labels)
+        gt_boxes.append(tmp_boxes)
+    res = eval_detection_coco(pred_boxes, pred_labels, pred_scores,
+                              gt_boxes, gt_labels)
+    return res
 def voc_eval(detpath,
              annopath,
              imagesetfile,
@@ -363,7 +465,14 @@ cachedir: Directory for caching the annotations
 
 def test_net(save_folder, net, cuda, dataset, transform, top_k,
              im_size=300, thresh=0.05):
-    num_images = len(dataset)
+    torch.manual_seed(12345)
+    seed_torch()
+    import pdb; pdb.set_trace()
+    size = len(dataset)
+    all_indices = torch.randperm(size).tolist()
+    cutoff = int(size * 0.8)
+    test = all_indices[cutoff:]
+    num_images = len(test)
     # all detections are collected into:
     #    all_boxes[cls][image] = N x 5 array of detections in
     #    (x1, y1, x2, y2, score)
@@ -375,7 +484,8 @@ def test_net(save_folder, net, cuda, dataset, transform, top_k,
     output_dir = get_output_dir('ssd300_120000', set_type)
     det_file = os.path.join(output_dir, 'detections.pkl')
 
-    for i in range(num_images):
+    iteration = 0
+    for i in test:
         im, gt, h, w = dataset.pull_item(i)
 
         x = Variable(im.unsqueeze(0))
@@ -393,24 +503,33 @@ def test_net(save_folder, net, cuda, dataset, transform, top_k,
             if dets.size(0) == 0:
                 continue
             boxes = dets[:, 1:]
-            boxes[:, 0] *= w
-            boxes[:, 2] *= w
-            boxes[:, 1] *= h
-            boxes[:, 3] *= h
+            # boxes[:, 0] *= w
+            # boxes[:, 2] *= w
+            # boxes[:, 1] *= h
+            # boxes[:, 3] *= h
+            boxes[:, 0] *= 300
+            boxes[:, 2] *= 300
+            boxes[:, 1] *= 300
+            boxes[:, 3] *= 300
             scores = dets[:, 0].cpu().numpy()
             cls_dets = np.hstack((boxes.cpu().numpy(),
                                   scores[:, np.newaxis])).astype(np.float32,
                                                                  copy=False)
-            all_boxes[j][i] = cls_dets
+            all_boxes[j][iteration] = cls_dets
 
-        print('im_detect: {:d}/{:d} {:.3f}s'.format(i + 1,
+        print('im_detect: {:d}/{:d} {:.3f}s'.format(iteration + 1,
                                                     num_images, detect_time))
+        iteration += 1
 
     with open(det_file, 'wb') as f:
         pickle.dump(all_boxes, f, pickle.HIGHEST_PROTOCOL)
 
     print('Evaluating detections')
-    evaluate_detections(all_boxes, output_dir, dataset)
+    if args.dataset == 'Faces':
+        res = eval_boxes(all_boxes, dataset, test)
+        print(res['coco_eval'].__str__())
+    else:
+        evaluate_detections(all_boxes, output_dir, dataset)
 
 
 def evaluate_detections(box_list, output_dir, dataset):
@@ -420,15 +539,22 @@ def evaluate_detections(box_list, output_dir, dataset):
 
 if __name__ == '__main__':
     # load net
+    # labelmap = 4
+    labelmap = ('left_eye', 'right_eye', 'nose_tip', 'glabella')
     num_classes = len(labelmap) + 1                      # +1 for background
     net = build_ssd('test', 300, num_classes)            # initialize SSD
     net.load_state_dict(torch.load(args.trained_model))
     net.eval()
     print('Finished loading model!')
     # load data
-    dataset = VOCDetection(args.voc_root, [('2007', set_type)],
-                           BaseTransform(300, dataset_mean),
-                           VOCAnnotationTransform())
+    if args.dataset == 'VOC':
+        dataset = VOCDetection(args.voc_root, [('2007', set_type)],
+                               BaseTransform(300, dataset_mean),
+                               VOCAnnotationTransform())
+    elif args.dataset == 'Faces':
+        cfg = faces
+        dataset = FacesDB('/home/fabian/data/TS/TCLObjectDetectionDatabase/tcl3_data.xml',
+                          )
     if args.cuda:
         net = net.cuda()
         cudnn.benchmark = True

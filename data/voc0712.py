@@ -5,13 +5,13 @@ https://github.com/fmassa/vision/blob/voc_dataset/torchvision/datasets/voc.py
 
 Updated by: Ellis Brown, Max deGroot
 """
-from .config import HOME
 import os.path as osp
 import sys
 import torch
 import torch.utils.data as data
 import cv2
 import numpy as np
+from .config import HOME
 if sys.version_info[0] == 2:
     import xml.etree.cElementTree as ET
 else:
@@ -113,7 +113,7 @@ class VOCDetection(data.Dataset):
 
     def __getitem__(self, index):
         im, gt, h, w = self.pull_item(index)
-
+        print("height %i, widht %i" %(h, w))
         return im, gt
 
     def __len__(self):
@@ -124,7 +124,7 @@ class VOCDetection(data.Dataset):
 
         target = ET.parse(self._annopath % img_id).getroot()
         img = cv2.imread(self._imgpath % img_id)
-        height, width, channels = img.shape
+        height, width, _ = img.shape
 
         if self.target_transform is not None:
             target = self.target_transform(target, width, height)
