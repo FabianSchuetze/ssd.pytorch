@@ -14,7 +14,7 @@ from data import VOC_CLASSES as labelmap
 from data import FacesDB
 from data import *
 import torch.utils.data as data
-from utils.augmentations import SSDAugmentation
+from utils.augmentations import SSDAugmentation, SmallAugmentation
 
 from ssd import build_ssd
 from chainercv.evaluations import eval_detection_coco, \
@@ -309,7 +309,7 @@ def eval_boxes(predictions, dataset, indices):
     eval: Dict:
         The results according to the coco metric. At IoU=0.5: VOC metric.
     """
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     pred_boxes, pred_labels, pred_scores = [], [], []
     gt_boxes, gt_labels = [], []
     predictions = list(zip(*predictions))
@@ -467,10 +467,9 @@ def test_net(save_folder, net, cuda, dataset, transform, top_k,
              im_size=300, thresh=0.05):
     torch.manual_seed(12345)
     seed_torch()
-    import pdb; pdb.set_trace()
     size = len(dataset)
     all_indices = torch.randperm(size).tolist()
-    cutoff = int(size * 0.8)
+    cutoff = int(size * 0.85)
     test = all_indices[cutoff:]
     num_images = len(test)
     # all detections are collected into:
@@ -553,8 +552,11 @@ if __name__ == '__main__':
                                VOCAnnotationTransform())
     elif args.dataset == 'Faces':
         cfg = faces
-        dataset = FacesDB('/home/fabian/data/TS/TCLObjectDetectionDatabase/tcl3_data.xml',
-                          )
+        dataset = FacesDB('/home/fabian/data/TS/TCLObjectDetectionDatabase/out.xml',
+                          transform=SmallAugmentation(cfg['min_dim'], MEANS))
+        # dataset = FacesDB('/home/fabian/data/TS/TCLObjectDetectionDatabase/tcl3_data.xml',
+                          # )
+    breakpoint()
     if args.cuda:
         net = net.cuda()
         cudnn.benchmark = True

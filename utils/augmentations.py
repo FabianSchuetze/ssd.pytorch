@@ -387,6 +387,7 @@ class PhotometricDistort(object):
         self.rand_light_noise = RandomLightingNoise()
 
     def __call__(self, image, boxes, labels):
+        # breakpoint()
         im = image.copy()
         im, boxes, labels = self.rand_brightness(im, boxes, labels)
         if random.randint(2):
@@ -402,15 +403,34 @@ class SSDAugmentation(object):
         self.mean = mean
         self.size = size
         self.augment = Compose([
-            ConvertFromInts(),
+            ConvertFromInts(), #uint8 type
             ToAbsoluteCoords(),
-            PhotometricDistort(),
+            # PhotometricDistort(),
             Expand(self.mean),
             RandomSampleCrop(),
             RandomMirror(),
             ToPercentCoords(),
             Resize(self.size),
             SubtractMeans(self.mean)
+        ])
+
+    def __call__(self, img, boxes, labels):
+        return self.augment(img, boxes, labels)
+
+class SmallAugmentation(object):
+    def __init__(self, size=300, mean=(104, 117, 123)):
+        self.mean = mean
+        self.size = size
+        self.augment = Compose([
+            # ConvertFromInts(), #uint8 type
+            # ToAbsoluteCoords(),
+            # PhotometricDistort(),
+            # Expand(self.mean),
+            # RandomSampleCrop(),
+            # RandomMirror(),
+            # ToPercentCoords(),
+            Resize(self.size),
+            # SubtractMeans(self.mean)
         ])
 
     def __call__(self, img, boxes, labels):

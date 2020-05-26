@@ -12,7 +12,7 @@ import torch.nn.init as init
 import torch.utils.data as data
 import argparse
 from data import *
-from utils.augmentations import SSDAugmentation
+from utils.augmentations import SSDAugmentation, SmallAugmentation
 from layers.modules import MultiBoxLoss
 from ssd import build_ssd
 import random
@@ -104,8 +104,7 @@ if not os.path.exists(args.save_folder):
 
 
 def train():
-    # import pdb
-    # pdb.set_trace()
+    # breakpoint()
     if args.dataset == 'COCO':
         if args.dataset_root == VOC_ROOT:
             if not os.path.exists(COCO_ROOT):
@@ -126,8 +125,8 @@ def train():
                                                          MEANS))
     elif args.dataset == 'Faces':
         cfg = faces
-        dataset = FacesDB('/home/fabian/data/TS/TCLObjectDetectionDatabase/tcl3_data.xml',
-                          )
+        dataset = FacesDB('/home/fabian/data/TS/TCLObjectDetectionDatabase/out.xml',
+                          transform=SmallAugmentation(cfg['min_dim'], MEANS))
 
     if args.visdom:
         import visdom
@@ -167,6 +166,7 @@ def train():
     # loss counters
     loc_loss = 0
     conf_loss = 0
+    total_loss = 0
     epoch = 0
     print('Loading the dataset...')
 
@@ -185,7 +185,7 @@ def train():
 
     torch.manual_seed(12345)
     seed_torch()
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     size = len(dataset)
     all_indices = torch.randperm(size).tolist()
     cutoff = int(size * 0.8)
@@ -232,6 +232,7 @@ def train():
         optimizer.zero_grad()
         loss_l, loss_c = criterion(out, targets)
         loss = loss_l + loss_c
+        total_loss = 0.9* total_loss + 0.1 * loss
         loss.backward()
         optimizer.step()
         t1 = time.time()
@@ -244,7 +245,7 @@ def train():
                 'iter ' +
                 repr(iteration) +
                 ' || Loss: %.4f ||' %
-                (loss.item()),
+                (total_loss.item()),
                 end=' ')
 
         if args.visdom:
