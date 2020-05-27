@@ -4,13 +4,14 @@ from ..box_utils import decode, nms
 from data import voc as cfg
 
 
-class Detect(Function):
+class Detect(torch.nn.Module):
     """At test time, Detect is the final layer of SSD.  Decode location preds,
     apply non-maximum suppression to location predictions based on conf
     scores and threshold to a top_k number of output predictions for both
     confidence score and locations.
     """
     def __init__(self, num_classes, bkg_label, top_k, conf_thresh, nms_thresh):
+        super(Detect, self).__init__()
         self.num_classes = num_classes
         self.background_label = bkg_label
         self.top_k = top_k
@@ -31,6 +32,7 @@ class Detect(Function):
             prior_data: (tensor) Prior boxes and variances from priorbox layers
                 Shape: [1,num_priors,4]
         """
+        # import pdb; pdb.set_trace()
         num = loc_data.size(0)  # batch size
         num_priors = prior_data.size(0)
         output = torch.zeros(num, self.num_classes, self.top_k, 5)
@@ -38,21 +40,22 @@ class Detect(Function):
                                     self.num_classes).transpose(2, 1)
 
         # Decode predictions into bboxes.
-        for i in range(num):
-            decoded_boxes = decode(loc_data[i], prior_data, self.variance)
+        for out, data, pred in zip(output, loc_data, conf_preds):
+        # for i in range(num):
+            decoded_boxes = decode(data, prior_data, self.variance)
             # For each class, perform nms
-            conf_scores = conf_preds[i].clone()
+            conf_scores = pred.clone()
 
             for cl in range(1, self.num_classes):
                 c_mask = conf_scores[cl].gt(self.conf_thresh)
                 scores = conf_scores[cl][c_mask]
-                if scores.size(0) == 0:
-                    continue
+                # if scores.size(0) == 0:
+                    # continue
                 l_mask = c_mask.unsqueeze(1).expand_as(decoded_boxes)
                 boxes = decoded_boxes[l_mask].view(-1, 4)
                 # idx of highest scoring and non-overlapping boxes per class
                 ids, count = nms(boxes, scores, self.nms_thresh, self.top_k)
-                output[i, cl, :count] = \
+                out[cl, :count] = \
                     torch.cat((scores[ids[:count]].unsqueeze(1),
                                boxes[ids[:count]]), 1)
         flt = output.contiguous().view(num, -1, 5)

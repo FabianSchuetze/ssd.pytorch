@@ -242,7 +242,6 @@ def voc_ap(rec, prec, use_07_metric=True):
     return ap
 
 def convert_to_box(boxes):
-    # import pdb; pdb.set_trace()
     results_boxes = None
     for idx, box in enumerate(boxes):
         if len(box) > 0:
@@ -317,13 +316,20 @@ def eval_boxes(predictions, dataset, indices):
     # sizes = [dataset.pull_item(i)[2:] for i in range(len(dataset))]
     images = [dataset[i][0] for i in indices]
     for pred, gt in zip(predictions, gts):
-        tmp_boxes, tmp_labels, tmp_scores = convert_to_box(pred)
-        pred_boxes.append(tmp_boxes)
-        pred_labels.append(tmp_labels)
-        pred_scores.append(tmp_scores)
-        tmp_boxes, tmp_labels = convert_gt(np.array(gt))
-        gt_labels.append(tmp_labels)
-        gt_boxes.append(tmp_boxes)
+        breakpoint()
+        if len(pred[1]) > 0:
+            tmp_boxes, tmp_labels, tmp_scores = convert_to_box(pred)
+        # else:
+            # tmp_boxes = np.array([[]]).reshape(0, 4)
+            # tmp_labels = np.array([])
+            # tmp_scores = np.array([])
+            pred_boxes.append(tmp_boxes)
+            pred_labels.append(tmp_labels)
+            pred_scores.append(tmp_scores)
+            tmp_boxes, tmp_labels = convert_gt(np.array(gt))
+            gt_labels.append(tmp_labels)
+            gt_boxes.append(tmp_boxes)
+    breakpoint()
     res = eval_detection_coco(pred_boxes, pred_labels, pred_scores,
                               gt_boxes, gt_labels)
     return res
@@ -487,10 +493,11 @@ def test_net(save_folder, net, cuda, dataset, transform, top_k,
     for i in test:
         im, gt, h, w = dataset.pull_item(i)
 
-        x = Variable(im.unsqueeze(0))
+        x = torch.Tensor(im.unsqueeze(0))
         if args.cuda:
             x = x.cuda()
         _t['im_detect'].tic()
+        breakpoint()
         detections = net(x).data
         detect_time = _t['im_detect'].toc(average=False)
 
@@ -539,10 +546,15 @@ def evaluate_detections(box_list, output_dir, dataset):
 if __name__ == '__main__':
     # load net
     # labelmap = 4
+    breakpoint()
     labelmap = ('left_eye', 'right_eye', 'nose_tip', 'glabella')
     num_classes = len(labelmap) + 1                      # +1 for background
     net = build_ssd('test', 300, num_classes)            # initialize SSD
-    net.load_state_dict(torch.load(args.trained_model))
+    if torch.cuda.is_available():
+        net.load_state_dict(torch.load(args.trained_model))
+    else:
+        net.load_state_dict(torch.load(args.trained_model,
+                                       map_location='cpu'))
     net.eval()
     print('Finished loading model!')
     # load data
@@ -552,11 +564,9 @@ if __name__ == '__main__':
                                VOCAnnotationTransform())
     elif args.dataset == 'Faces':
         cfg = faces
-        dataset = FacesDB('/home/fabian/data/TS/TCLObjectDetectionDatabase/out.xml',
-                          transform=SmallAugmentation(cfg['min_dim'], MEANS))
-        # dataset = FacesDB('/home/fabian/data/TS/TCLObjectDetectionDatabase/tcl3_data.xml',
-                          # )
-    breakpoint()
+        path ='/home/fabian/CrossCalibration/TCLObjectDetectionDatabase/depthscale_combined_ssd.xml'
+        dataset = FacesDB(path, transform=SmallAugmentation(cfg['min_dim'], MEANS))
+    # breakpoint()
     if args.cuda:
         net = net.cuda()
         cudnn.benchmark = True

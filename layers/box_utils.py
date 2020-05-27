@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import torch
+from typing import List
 
 
 def point_form(boxes):
@@ -137,7 +138,7 @@ def encode(matched, priors, variances):
 
 
 # Adapted from https://github.com/Hakuyume/chainer-ssd
-def decode(loc, priors, variances):
+def decode(loc, priors, variances: List[float]):
     """Decode locations from predictions using priors to undo
     the encoding we did for offset regression at train time.
     Args:
