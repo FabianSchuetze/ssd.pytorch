@@ -6,11 +6,13 @@ find_package(Torch REQUIRED)
 find_package(Python REQUIRED)
 find_package(PythonLibs REQUIRED)
 find_package(TorchVision REQUIRED)
+find_package( OpenCV REQUIRED )
 
 include_directories(${PYTHON_INCLUDE_DIRS})
 
 set(${LIBRARY_TARGET_NAME}_SRC
     PostProcessing.cpp
+    PreProcessing.cpp
 )
 
 set(${LIBRARY_TARGET_NAME}_HDR
@@ -20,9 +22,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -O0")
 if (UNIX)
   add_library(${LIBRARY_TARGET_NAME} SHARED ${${LIBRARY_TARGET_NAME}_SRC})
 endif(UNIX)
-target_link_libraries(${LIBRARY_TARGET_NAME} PRIVATE ${TORCH_LIBRARIES} ${PYTHON_LIBRARIES})
+target_link_libraries(${LIBRARY_TARGET_NAME} PRIVATE ${TORCH_LIBRARIES} ${PYTHON_LIBRARIES} ${OpenCV_LIBS})
 target_compile_options(${LIBRARY_TARGET_NAME} PUBLIC)
 
 add_executable(example-app main.cpp)
-target_link_libraries(example-app  PUBLIC ${TORCH_LIBRARIES} Faces TorchVision::TorchVision)
+target_link_libraries(example-app  PUBLIC ${TORCH_LIBRARIES} Faces TorchVision::TorchVision ${OpenCV_LIBS})
 set_property(TARGET example-app PROPERTY CXX_STANDARD 14)

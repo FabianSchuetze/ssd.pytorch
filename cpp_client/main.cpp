@@ -3,10 +3,15 @@
 #include <chrono>
 #include <iostream>
 #include <memory>
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 
 #include "DataProcessing.hpp"
 
+using namespace cv;
 using namespace std::chrono;
+
 int main(int argc, const char* argv[]) {
     if (argc != 3) {
         std::cerr << "usage: example-app <path-to-exported-script-module>\n";
@@ -24,8 +29,14 @@ int main(int argc, const char* argv[]) {
     }
     std::vector<torch::jit::IValue> inputs(1);
     PostProcessing detection("params.txt");
+    PreProcessing preprocess("params.txt");
+    std::string path =
+        "/home/fabian/data/TS/ImageTCL/grayscale/"
+        "2000-01-01_109790322_121528_REF_003754.png";
     for (int i = 0; i < 10; ++i) {
-        inputs[0] = torch::rand({1, 3, 300, 300});
+        cv::Mat image;
+        image = cv::imread(path, CV_LOAD_IMAGE_COLOR);
+        torch::Tensor tensor_image = preprocess.process(image);
         auto start = high_resolution_clock::now();
         auto outputs = module.forward(inputs).toTuple();
         auto final = detection.process(outputs->elements()[0].toTensor(),
