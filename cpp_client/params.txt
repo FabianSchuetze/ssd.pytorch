@@ -4,3 +4,4 @@ conf_thresh 0.01
 nms_thresh 0.5
 variance_0 0.1
 variance_1 0.2
+size 300

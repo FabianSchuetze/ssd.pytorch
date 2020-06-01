@@ -1,3 +1,4 @@
+#include <ATen/core/ivalue.h>
 #include <torch/script.h>  // One-stop header.
 
 #include <chrono>
@@ -27,9 +28,13 @@ int main(int argc, const char* argv[]) {
         std::cerr << "error loading the model\n";
         return -1;
     }
+    std::cout << "start" << std::endl;
     std::vector<torch::jit::IValue> inputs(1);
-    PostProcessing detection("params.txt");
-    PreProcessing preprocess("params.txt");
+    std::string config = "/home/fabian/Documents/work/github/ssd.pytorch/cpp_client/params.txt";
+    PostProcessing detection(config);
+    std::cout << "start2" << std::endl;
+    PreProcessing preprocess(config);
+    std::cout << "start3" << std::endl;
     std::string path =
         "/home/fabian/data/TS/ImageTCL/grayscale/"
         "2000-01-01_109790322_121528_REF_003754.png";
@@ -37,6 +42,8 @@ int main(int argc, const char* argv[]) {
         cv::Mat image;
         image = cv::imread(path, CV_LOAD_IMAGE_COLOR);
         torch::Tensor tensor_image = preprocess.process(image);
+        //torch::IValue test {image};
+        inputs[0] =tensor_image;
         auto start = high_resolution_clock::now();
         auto outputs = module.forward(inputs).toTuple();
         auto final = detection.process(outputs->elements()[0].toTensor(),

@@ -1,4 +1,5 @@
 #include "DataProcessing.hpp"
+#include <fstream>
 #include <torch/csrc/autograd/generated/variable_factories.h>
 #include <torchvision/nms.h>
 #include <torchvision/vision.h>
@@ -7,17 +8,17 @@
 
 using torch::Tensor;
 
-PostProcessing::PostProcessing(std::string config)
+PostProcessing::PostProcessing(const std::string& config)
     : _num_classes(0),
       _bkg_label(0),
       _conf_thresh(0),
       _nms_thresh(0),
       _variances(2) {
-    std::ifstream paramFile{"params.txt"};
+    std::cout << "the path is: " << config << std::endl;
+    std::ifstream paramFile{config};
     std::map<std::string, std::string> params{
         std::istream_iterator<kv_pair>{paramFile},
         std::istream_iterator<kv_pair>{}};
-    _num_classes = std::stoi(params["num_classes"]);
     _bkg_label = std::stoi(params["bkg_label"]);
     _conf_thresh = std::stof(params["conf_thresh"]);
     _nms_thresh = std::stof(params["nms_thresh"]);

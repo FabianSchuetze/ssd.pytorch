@@ -6,11 +6,13 @@
 #include "opencv2/imgproc/imgproc.hpp"
 
 PreProcessing::PreProcessing(const std::string& config) : _size(0) {
-    std::ifstream paramFile{"params.txt"};
+    std::cout << "the path is: " << config << std::endl;
+    std::ifstream paramFile{config};
     std::map<std::string, std::string> params{
         std::istream_iterator<kv_pair>{paramFile},
         std::istream_iterator<kv_pair>{}};
-    _size = std::stoi(params["num_classes"]);
+    //std::string s = params["size"];
+    _size = std::stoi(params["size"]);
 }
 
 torch::Tensor PreProcessing::process(const cv::Mat& img) {

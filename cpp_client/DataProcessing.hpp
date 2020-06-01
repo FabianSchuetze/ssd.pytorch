@@ -5,7 +5,7 @@
 
 class PostProcessing {
    public:
-    PostProcessing(std::string);
+    PostProcessing(const std::string&);
     torch::Tensor process(const torch::Tensor& localization,
                           const torch::Tensor& confidence,
                           const torch::Tensor& priors);
