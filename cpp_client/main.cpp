@@ -4,7 +4,7 @@
 #include <iostream>
 #include <memory>
 
-#include "NMS.hpp"
+#include "DataProcessing.hpp"
 
 using namespace std::chrono;
 int main(int argc, const char* argv[]) {
@@ -23,12 +23,12 @@ int main(int argc, const char* argv[]) {
         return -1;
     }
     std::vector<torch::jit::IValue> inputs(1);
-    Detect detection(5, 0, 5, 0.01, 0.45);
+    PostProcessing detection("params.txt");
     for (int i = 0; i < 10; ++i) {
         inputs[0] = torch::rand({1, 3, 300, 300});
         auto start = high_resolution_clock::now();
         auto outputs = module.forward(inputs).toTuple();
-        auto final = detection.forward(outputs->elements()[0].toTensor(),
+        auto final = detection.process(outputs->elements()[0].toTensor(),
                                        outputs->elements()[1].toTensor(),
                                        priors.attr("priors").toTensor());
         auto stop = high_resolution_clock::now();
