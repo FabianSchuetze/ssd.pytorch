@@ -3,6 +3,8 @@ Trains the model
 """
 import os
 import time
+import random
+import argparse
 import torch
 from torch.autograd import Variable
 import torch.nn as nn
@@ -10,14 +12,12 @@ import torch.optim as optim
 import torch.backends.cudnn as cudnn
 import torch.nn.init as init
 import torch.utils.data as data
-import argparse
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from data import *
 from utils.augmentations import SSDAugmentation, SmallAugmentation
 from layers.modules import MultiBoxLoss
 from ssd import build_ssd
-import random
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 
 def seed_torch(seed=1029):
     random.seed(seed)
@@ -128,10 +128,6 @@ def train():
         dataset = FacesDB('/home/fabian/data/TS/TCLObjectDetectionDatabase/out.xml',
                           transform=SmallAugmentation(cfg['min_dim'], MEANS))
 
-    if args.visdom:
-        import visdom
-        viz = visdom.Visdom()
-
     ssd_net = build_ssd('train', cfg['min_dim'], cfg['num_classes'])
     net = ssd_net
 
@@ -177,18 +173,13 @@ def train():
 
     step_index = 0
 
-    if args.visdom:
-        vis_title = 'SSD.PyTorch on ' + dataset.name
-        vis_legend = ['Loc Loss', 'Conf Loss', 'Total Loss']
-        iter_plot = create_vis_plot('Iteration', 'Loss', vis_title, vis_legend)
-        epoch_plot = create_vis_plot('Epoch', 'Loss', vis_title, vis_legend)
-
     torch.manual_seed(12345)
     seed_torch()
     # import pdb; pdb.set_trace()
     size = len(dataset)
     all_indices = torch.randperm(size).tolist()
     cutoff = int(size * 0.8)
+    cutoff = int(cutoff / 2)
     train = all_indices[:cutoff]
     dataset = data.Subset(dataset, train)
     data_loader = data.DataLoader(dataset, args.batch_size,
@@ -198,26 +189,16 @@ def train():
     # create batch iterator
     batch_iterator = iter(data_loader)
     for iteration in range(args.start_iter, cfg['max_iter']):
-        if args.visdom and iteration != 0 and (iteration % epoch_size == 0):
-            update_vis_plot(epoch, loc_loss, conf_loss, epoch_plot, None,
-                            'append', epoch_size)
-            # reset epoch loss counters
-            loc_loss = 0
-            conf_loss = 0
-            epoch += 1
 
         if iteration in cfg['lr_steps']:
             step_index += 1
             adjust_learning_rate(optimizer, args.gamma, step_index)
 
-        # load train data
-        # images, targets = next(batch_iterator)
         try:
             images, targets = next(batch_iterator)
         except StopIteration:
             batch_iterator = iter(data_loader)
             images, targets = next(batch_iterator)
-        # import pdb; pdb.set_trace()
 
         if args.cuda:
             images = Variable(images.cuda())
@@ -279,38 +260,6 @@ def weights_init(m):
     if isinstance(m, nn.Conv2d):
         xavier(m.weight.data)
         m.bias.data.zero_()
-
-
-def create_vis_plot(_xlabel, _ylabel, _title, _legend):
-    return viz.line(
-        X=torch.zeros((1,)).cpu(),
-        Y=torch.zeros((1, 3)).cpu(),
-        opts=dict(
-            xlabel=_xlabel,
-            ylabel=_ylabel,
-            title=_title,
-            legend=_legend
-        )
-    )
-
-
-def update_vis_plot(iteration, loc, conf, window1, window2, update_type,
-                    epoch_size=1):
-    viz.line(
-        X=torch.ones((1, 3)).cpu() * iteration,
-        Y=torch.Tensor([loc, conf, loc + conf]).unsqueeze(0).cpu() / epoch_size,
-        win=window1,
-        update=update_type
-    )
-    # initialize epoch plot on first iteration
-    if iteration == 0:
-        viz.line(
-            X=torch.zeros((1, 3)).cpu(),
-            Y=torch.Tensor([loc, conf, loc + conf]).unsqueeze(0).cpu(),
-            win=window2,
-            update=True
-        )
-
 
 if __name__ == '__main__':
     train()

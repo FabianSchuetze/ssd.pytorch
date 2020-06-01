@@ -29,7 +29,7 @@ class SSD(nn.Module):
         super(SSD, self).__init__()
         self.phase = phase
         self.num_classes = num_classes
-        self.cfg = (coco, voc)[num_classes == 21]
+        self.cfg = (coco, voc)[num_classes == 21] # what is this here?
         self.priorbox = PriorBox(self.cfg)
         self.priors = Variable(self.priorbox.forward(), volatile=True)
         self.size = size
@@ -74,7 +74,7 @@ class SSD(nn.Module):
         for k in range(23):
             x = self.vgg[k](x)
 
-        s = self.L2Norm(x)
+        s = self.L2Norm(x) #something about the feature scale, page 7 of paper
         sources.append(s)
 
         # apply vgg up to fc7
@@ -123,9 +123,9 @@ class SSD(nn.Module):
 
 # This function is derived from torchvision VGG make_layers()
 # https://github.com/pytorch/vision/blob/master/torchvision/models/vgg.py
-def vgg(cfg, i, batch_norm=False):
+def vgg(cfg, in_channels: int, batch_norm=False):
     layers = []
-    in_channels = i
+    # in_channels = i
     for v in cfg:
         if v == 'M':
             layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
@@ -146,10 +146,10 @@ def vgg(cfg, i, batch_norm=False):
     return layers
 
 
-def add_extras(cfg, i, batch_norm=False):
+def add_extras(cfg, in_channels: int, batch_norm=False):
     # Extra layers added to VGG for feature scaling
     layers = []
-    in_channels = i
+    # in_channels = i
     flag = False
     for k, v in enumerate(cfg):
         if in_channels != 'S':
@@ -167,6 +167,7 @@ def multibox(vgg, extra_layers, cfg, num_classes):
     loc_layers = []
     conf_layers = []
     vgg_source = [21, -2]
+    # prepares the convolution layers for the prediction. Why convolution?
     for k, v in enumerate(vgg_source):
         loc_layers += [nn.Conv2d(vgg[v].out_channels,
                                  cfg[k] * 4, kernel_size=3, padding=1)]
