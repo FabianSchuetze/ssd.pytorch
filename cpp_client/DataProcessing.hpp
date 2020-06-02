@@ -5,10 +5,12 @@
 
 class PostProcessing {
    public:
+    struct Landmark { float left, top, width, height, confidence;};
     PostProcessing(const std::string&);
     torch::Tensor process(const torch::Tensor& localization,
                           const torch::Tensor& confidence,
                           const torch::Tensor& priors);
+    std::vector<Landmark> convert(const torch::Tensor& input);
 
    private:
     torch::Tensor decode(const torch::Tensor& localization,

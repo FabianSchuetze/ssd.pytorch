@@ -63,9 +63,9 @@ class FacesDB(data.Dataset):
     def _load_sample(self, idx) -> Tuple[List]:
         sample = self.ids[idx]
         img = Image.open(sample.get('file'))
+        if img.mode == 'L':
+            img = img.convert('RGB')
         height, width = img.height, img.width
-        # img = cv2.imread(sample.get('file'))
-        # convert to numpy array
         res = []
         for tag in sample.findall('box'):
             sample = []
@@ -78,20 +78,15 @@ class FacesDB(data.Dataset):
         return img, res, height, width
 
     def pull_item(self, index: int):
-        # import pdb; pdb.set_trace()
+        # breakpoint()
         img, target, height, width = self._load_sample(index)
         img = F.to_tensor(img)
         img = img.numpy().transpose(1, 2, 0)
-        # img = np.array(img, dtype=np.float32)
-        # convert img to numpy array
-
-        # target = ET.parse(self._annopath % img_id).getroot()
-        # img = cv2.imread(self._imgpath % img_id)
 
         #TODO: I NEED TO ADD THIS AS I ALWAYS TRANFORMS!!!
         # if self.target_transform is not None:
             # target = self.target_transform(target, width, height)
-        # breakpoint()
+
 
         if self.transform is not None:
             target = np.array(target)

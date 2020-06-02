@@ -314,22 +314,18 @@ def eval_boxes(predictions, dataset, indices):
     predictions = list(zip(*predictions))
     gts = [dataset[i][1] for i in indices]
     # sizes = [dataset.pull_item(i)[2:] for i in range(len(dataset))]
-    images = [dataset[i][0] for i in indices]
+    # images = [dataset[i][0] for i in indices]
     for pred, gt in zip(predictions, gts):
-        breakpoint()
+        # breakpoint()
         if len(pred[1]) > 0:
             tmp_boxes, tmp_labels, tmp_scores = convert_to_box(pred)
-        # else:
-            # tmp_boxes = np.array([[]]).reshape(0, 4)
-            # tmp_labels = np.array([])
-            # tmp_scores = np.array([])
             pred_boxes.append(tmp_boxes)
             pred_labels.append(tmp_labels)
             pred_scores.append(tmp_scores)
             tmp_boxes, tmp_labels = convert_gt(np.array(gt))
             gt_labels.append(tmp_labels)
             gt_boxes.append(tmp_boxes)
-    breakpoint()
+    # breakpoint()
     res = eval_detection_coco(pred_boxes, pred_labels, pred_scores,
                               gt_boxes, gt_labels)
     return res
@@ -492,13 +488,15 @@ def test_net(save_folder, net, cuda, dataset, transform, top_k,
     iteration = 0
     for i in test:
         im, gt, h, w = dataset.pull_item(i)
+        x = Variable(im.unsqueeze(0))
 
-        x = torch.Tensor(im.unsqueeze(0))
+        # x = torch.tensor(im.unsqueeze(0))
         if args.cuda:
             x = x.cuda()
         _t['im_detect'].tic()
         breakpoint()
-        detections = net(x).data
+        loc, conf = net(x)
+        detections = net.detect(loc, conf, net.priors).data
         detect_time = _t['im_detect'].toc(average=False)
 
         # skip j = 0, because it's the background class
@@ -564,7 +562,8 @@ if __name__ == '__main__':
                                VOCAnnotationTransform())
     elif args.dataset == 'Faces':
         cfg = faces
-        path ='/home/fabian/CrossCalibration/TCLObjectDetectionDatabase/depthscale_combined_ssd.xml'
+        path = '/home/fabian/data/TS/CrossCalibration/TCLObjectDetectionDatabase'
+        path += '/greyscale_combined.xml'
         dataset = FacesDB(path, transform=SmallAugmentation(cfg['min_dim'], MEANS))
     # breakpoint()
     if args.cuda:

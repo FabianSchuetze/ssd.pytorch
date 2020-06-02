@@ -75,3 +75,12 @@ Tensor PostProcessing::process(const Tensor& localization,
     std::cout << "The output size is:" << output.size(0) << std::endl;
     return output;
 }
+
+//std::vector<PostProcessing::Landmark> convert(const Tensor& prediction) {
+    //std::vector<PostProcessing::Landmark> results;
+    //// The first dimension is the number of classes
+    //for (int i = 1; i < _num_classes; ++i) {
+        //Tensor cur = prediction.slice(0, 
+        //Tensor confident = cur.gt(_conf_thresh);
+    //}
+//}
