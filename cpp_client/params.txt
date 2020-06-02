@@ -1,6 +1,6 @@
 num_classes 5
 bkg_label 0
-conf_thresh 0.5
+conf_thresh 0.01
 nms_thresh 0.5
 variance_0 0.1
 variance_1 0.2

@@ -67,6 +67,10 @@ landmarks PostProcessing::process(const Tensor& localization,
         Tensor cur = conf_scores.slice(0, i, i + 1);
         Tensor confident = cur.gt(_conf_thresh);
         Tensor scores = cur.masked_select(confident);
+        //std::cout << scores << std::endl;
+        if (scores.size(0) == 0) {
+            continue;
+        }
         Tensor l_mask = confident.transpose(1, 0).expand_as(decoded_boxes);
         Tensor boxes = decoded_boxes.masked_select(l_mask).view({-1, 4});
         Tensor ids = nms_cpu(boxes, scores, _nms_thresh);
@@ -78,15 +82,18 @@ landmarks PostProcessing::process(const Tensor& localization,
     return results;
 }
 
-landmarks PostProcessing::convert(int i, const Tensor& scores, const Tensor& boxes) {
+landmarks PostProcessing::convert(int i, const Tensor& scores,
+                                  const Tensor& boxes) {
     std::vector<PostProcessing::Landmark> results;
     for (int i = 0; i < scores.size(0); ++i) {
         PostProcessing::Landmark l;
-        l.top = boxes[i][0].item<float>() * 300;
-        l.left = boxes[i][1].item<float>() * 300;
+        float top = boxes[i][0].item<float>() * 300;
+        float confidence = scores[i][0].item<float>();
+        //std::cout << "the confidence is : " << confidence << std::endl;
+        l.top = top;
         l.height = boxes[i][2].item<float>() * 300;
         l.width = boxes[i][3].item<float>() * 300;
-        l.confidence = scores[i][0].item<float>();
+        l.confidence = confidence;
         results.push_back(l);
     }
     return results;

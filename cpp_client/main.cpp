@@ -1,4 +1,5 @@
 #include <ATen/core/ivalue.h>
+#include <opencv2/imgproc.hpp>
 #include <torch/script.h>  // One-stop header.
 #include <torch/torch.h>
 #include <chrono>
@@ -65,9 +66,19 @@ int main(int argc, const char* argv[]) {
         "/home/fabian/data/TS/CrossCalibration/ImageTCL/greyscale/";
     std::vector<std::string> files = load_images(path);
     for (const std::string& img : files) {
-        cv::Mat image;
+        cv::Mat image, image_rgb;
         image = cv::imread(img, CV_LOAD_IMAGE_COLOR);
-        torch::Tensor tensor_image = preprocess.process(image);
+        cv::cvtColor(image, image_rgb, COLOR_BGR2RGB);
+        //namedWindow( "Display window", WINDOW_AUTOSIZE );// Create a window for display.
+        //imshow( "Display window", image_rgb);                   // Show our image inside it.
+        //waitKey(0);
+
+        //std::cout << img << std::endl;
+        torch::Tensor tensor_image = preprocess.process(image_rgb);
+        torch::Tensor test = at::max(tensor_image);
+        std::cout << "the maximum is: " << test << std::endl;
+        //std::cout << tensor_image << std::endl;
+        //waitKey(0);
         torch::Device device(torch::kCPU);
         module.to(device);
         priors.to(device);  // move stuff to CPU
