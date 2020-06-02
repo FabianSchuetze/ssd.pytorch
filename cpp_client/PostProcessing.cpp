@@ -8,6 +8,7 @@
 #include "LoadConfig.hpp"
 
 using torch::Tensor;
+typedef std::vector<PostProcessing::Landmark> landmarks;
 
 PostProcessing::PostProcessing(const std::string& config)
     : _num_classes(0),
@@ -51,8 +52,10 @@ Tensor PostProcessing::decode(const Tensor& loc, const Tensor& priors) {
     return boxes;
 }
 
-Tensor PostProcessing::process(const Tensor& localization,
-                               const Tensor& confidence, const Tensor& priors) {
+landmarks PostProcessing::process(const Tensor& localization,
+                                  const Tensor& confidence,
+                                  const Tensor& priors) {
+    std::vector<PostProcessing::Landmark> results;
     int num_priors = priors.size(0);
     Tensor output = torch::empty({0, 5});
     Tensor conf_preds = confidence.view({num_priors, _num_classes});
@@ -69,18 +72,22 @@ Tensor PostProcessing::process(const Tensor& localization,
         Tensor ids = nms_cpu(boxes, scores, _nms_thresh);
         Tensor selected_scores = scores.index_select(0, ids).unsqueeze(1);
         Tensor selected_boxes = boxes.index_select(0, ids);
-        Tensor test = torch::cat({selected_scores, selected_boxes}, 1);
-        output = torch::cat({output, test}, 0);
+        std::vector<Landmark> tmp = convert(i, selected_scores, selected_boxes);
+        results.insert(results.end(), tmp.begin(), tmp.end());
     }
-    std::cout << "The output size is:" << output.size(0) << std::endl;
-    return output;
+    return results;
 }
 
-//std::vector<PostProcessing::Landmark> convert(const Tensor& prediction) {
-    //std::vector<PostProcessing::Landmark> results;
-    //// The first dimension is the number of classes
-    //for (int i = 1; i < _num_classes; ++i) {
-        //Tensor cur = prediction.slice(0, 
-        //Tensor confident = cur.gt(_conf_thresh);
-    //}
-//}
+landmarks PostProcessing::convert(int i, const Tensor& scores, const Tensor& boxes) {
+    std::vector<PostProcessing::Landmark> results;
+    for (int i = 0; i < scores.size(0); ++i) {
+        PostProcessing::Landmark l;
+        l.top = boxes[i][0].item<float>() * 300;
+        l.left = boxes[i][1].item<float>() * 300;
+        l.height = boxes[i][2].item<float>() * 300;
+        l.width = boxes[i][3].item<float>() * 300;
+        l.confidence = scores[i][0].item<float>();
+        results.push_back(l);
+    }
+    return results;
+}

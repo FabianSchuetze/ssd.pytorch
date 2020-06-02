@@ -1,6 +1,6 @@
 #include <ATen/core/ivalue.h>
 #include <torch/script.h>  // One-stop header.
-
+#include <torch/torch.h>
 #include <chrono>
 #include <filesystem>
 #include <iostream>
@@ -8,6 +8,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <fstream>
 
 #include "DataProcessing.hpp"
 
@@ -17,10 +18,27 @@ using namespace std::chrono;
 
 std::vector<std::string> load_images(const std::string& path) {
     std::vector<std::string> files;
-    for (const auto & img : fs::directory_iterator(path)) {
+    for (const auto& img : fs::directory_iterator(path)) {
         files.push_back(img.path());
     }
     return files;
+}
+
+void serialize_results(const std::string& file,
+                       const std::vector<PostProcessing::Landmark>& result) {
+    std::ofstream myfile;
+    size_t pos = file.find_last_of("/");
+    std::string filename = file.substr(pos + 1);
+    std::cout << "the filename is: " << filename << std::endl;
+    std::string token = filename.substr(0, filename.find("."));
+    myfile.open("results/" + token + ".result", std::ios::trunc);
+    std::cout << "iterating over results, with size " <<  result.size() << std::endl;
+    for (const PostProcessing::Landmark& res : result) {
+        myfile << "top :" << res.top << ", " << res.left << ", " <<
+            res.width << ", " << res.height << "; " << res.confidence <<
+            std::endl;
+    }
+    myfile.close();
 }
 
 int main(int argc, const char* argv[]) {
@@ -43,22 +61,27 @@ int main(int argc, const char* argv[]) {
         "/home/fabian/Documents/work/github/ssd.pytorch/cpp_client/params.txt";
     PostProcessing detection(config);
     PreProcessing preprocess(config);
-    std::string path = "/home/fabian/data/TS/ImageTCL/grayscale/";
+    std::string path =
+        "/home/fabian/data/TS/CrossCalibration/ImageTCL/greyscale/";
     std::vector<std::string> files = load_images(path);
     for (const std::string& img : files) {
         cv::Mat image;
         image = cv::imread(img, CV_LOAD_IMAGE_COLOR);
         torch::Tensor tensor_image = preprocess.process(image);
-        // torch::IValue test {image};
+        torch::Device device(torch::kCPU);
+        module.to(device);
+        priors.to(device);  // move stuff to CPU
         inputs[0] = tensor_image;
         auto start = high_resolution_clock::now();
         auto outputs = module.forward(inputs).toTuple();
-        torch::Tensor result = detection.process(outputs->elements()[0].toTensor(),
-                                       outputs->elements()[1].toTensor(),
-                                       priors.attr("priors").toTensor());
+        std::vector<PostProcessing::Landmark> result =
+            detection.process(outputs->elements()[0].toTensor(),
+                              outputs->elements()[1].toTensor(),
+                              priors.attr("priors").toTensor());
         auto stop = high_resolution_clock::now();
         auto duration = duration_cast<microseconds>(stop - start);
         std::cout << "Time taken by function: at " << img << " "
                   << duration.count() << " microseconds" << std::endl;
+        serialize_results(img, result);
     }
 }
