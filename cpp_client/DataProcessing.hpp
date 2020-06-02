@@ -13,6 +13,7 @@ class PostProcessing {
    private:
     torch::Tensor decode(const torch::Tensor& localization,
                          const torch::Tensor& priors);
+    void print_arguments();
 
     int _num_classes, _bkg_label;
     float _conf_thresh, _nms_thresh;

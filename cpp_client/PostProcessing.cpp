@@ -1,9 +1,10 @@
-#include "DataProcessing.hpp"
-#include <fstream>
 #include <torch/csrc/autograd/generated/variable_factories.h>
 #include <torchvision/nms.h>
 #include <torchvision/vision.h>
 
+#include <fstream>
+
+#include "DataProcessing.hpp"
 #include "LoadConfig.hpp"
 
 using torch::Tensor;
@@ -14,18 +15,31 @@ PostProcessing::PostProcessing(const std::string& config)
       _conf_thresh(0),
       _nms_thresh(0),
       _variances(2) {
-    std::cout << "the path is: " << config << std::endl;
+    // std::cout << "the path is: " << config << std::endl;
     std::ifstream paramFile{config};
     std::map<std::string, std::string> params{
         std::istream_iterator<kv_pair>{paramFile},
         std::istream_iterator<kv_pair>{}};
+    _num_classes = std::stoi(params["num_classes"]);
     _bkg_label = std::stoi(params["bkg_label"]);
     _conf_thresh = std::stof(params["conf_thresh"]);
     _nms_thresh = std::stof(params["nms_thresh"]);
     _variances[0] = std::stof(params["variance_0"]);
     _variances[1] = std::stof(params["variance_1"]);
+    print_arguments();
 
     ;
+}
+
+void PostProcessing::print_arguments() {
+    std::cout << "The parameters for the algortihm are: "
+              << "num_classes: " << _num_classes << std::endl
+              << "bgk_label: " << _bkg_label << std::endl
+              << "conf_thresh: " << _conf_thresh << std::endl
+              << "nms_thresh: " << _nms_thresh << std::endl
+              << " bgk_label: " << _bkg_label << std::endl
+              << " variance: " << _variances[0] << ", " << _variances[1]
+              << std::endl;
 }
 
 Tensor PostProcessing::decode(const Tensor& loc, const Tensor& priors) {
@@ -37,14 +51,14 @@ Tensor PostProcessing::decode(const Tensor& loc, const Tensor& priors) {
     return boxes;
 }
 
-Tensor PostProcessing::process(const Tensor& localization, const Tensor& confidence,
-                               const Tensor& priors) {
+Tensor PostProcessing::process(const Tensor& localization,
+                               const Tensor& confidence, const Tensor& priors) {
     int num_priors = priors.size(0);
     Tensor output = torch::empty({0, 5});
     Tensor conf_preds = confidence.view({num_priors, _num_classes});
     conf_preds = conf_preds.transpose(1, 0);
-    Tensor boundig_boxes = localization.squeeze(0);
-    Tensor decoded_boxes = decode(localization, priors);
+    Tensor bounding_boxes = localization.squeeze(0);
+    Tensor decoded_boxes = decode(bounding_boxes, priors);
     Tensor conf_scores = conf_preds.clone();
     for (int i = 1; i < _num_classes; ++i) {
         Tensor cur = conf_scores.slice(0, i, i + 1);
