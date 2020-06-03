@@ -74,6 +74,9 @@ int main(int argc, const char* argv[]) {
             continue;
         }
         cv::cvtColor(image, image_rgb, COLOR_BGR2RGB);
+        int height = image.size().height;
+        int width = image.size().width;
+        std::pair<float, float> size = std::make_pair(height, width);
         torch::Tensor tensor_image = preprocess.process(image_rgb);
         torch::Device device(torch::kCPU);
         module.to(device);
@@ -84,7 +87,7 @@ int main(int argc, const char* argv[]) {
         std::vector<PostProcessing::Landmark> result =
             detection.process(outputs->elements()[0].toTensor(),
                               outputs->elements()[1].toTensor(),
-                              priors.attr("priors").toTensor());
+                              priors.attr("priors").toTensor(), size);
         auto stop = high_resolution_clock::now();
         auto duration = duration_cast<microseconds>(stop - start);
         serialize_results(img, result);

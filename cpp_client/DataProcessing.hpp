@@ -1,7 +1,6 @@
 #ifndef data_processing_hpp
 #define data_processing_hpp
 #include <torch/script.h>  // One-stop header.
-
 #include <opencv2/core/core.hpp>
 
 class PostProcessing {
@@ -13,13 +12,14 @@ class PostProcessing {
     PostProcessing(const std::string&);
     std::vector<Landmark> process(const torch::Tensor& localization,
                                   const torch::Tensor& confidence,
-                                  const torch::Tensor& priors);
+                                  const torch::Tensor& priors,
+                                  std::pair<float, float> const&);;
 
    private:
     torch::Tensor decode(const torch::Tensor& localization,
                          const torch::Tensor& priors);
-    std::vector<Landmark> convert(int, const torch::Tensor&,
-                                  const torch::Tensor&);
+    void convert(int, const torch::Tensor&, const torch::Tensor&,
+                 const std::pair<float, float>&, std::vector<Landmark>&);
     void print_arguments();
 
     int _num_classes, _bkg_label;

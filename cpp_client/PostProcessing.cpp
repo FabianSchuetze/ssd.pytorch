@@ -54,7 +54,8 @@ Tensor PostProcessing::decode(const Tensor& loc, const Tensor& priors) {
 
 landmarks PostProcessing::process(const Tensor& localization,
                                   const Tensor& confidence,
-                                  const Tensor& priors) {
+                                  const Tensor& priors,
+                                  const std::pair<float, float>& img_size) {
     std::vector<PostProcessing::Landmark> results;
     int num_priors = priors.size(0);
     Tensor output = torch::empty({0, 5});
@@ -67,36 +68,38 @@ landmarks PostProcessing::process(const Tensor& localization,
         Tensor cur = conf_scores.slice(0, i, i + 1);
         Tensor confident = cur.gt(_conf_thresh);
         Tensor scores = cur.masked_select(confident);
-        //std::cout << scores << std::endl;
         if (scores.size(0) == 0) {
             continue;
         }
         Tensor l_mask = confident.transpose(1, 0).expand_as(decoded_boxes);
         Tensor boxes = decoded_boxes.masked_select(l_mask).view({-1, 4});
         Tensor ids = nms_cpu(boxes, scores, _nms_thresh);
-        Tensor selected_scores = scores.index_select(0, ids).unsqueeze(1);
+        Tensor selected_scores = scores.index_select(0, ids);
         Tensor selected_boxes = boxes.index_select(0, ids);
-        std::vector<Landmark> tmp = convert(i, selected_scores, selected_boxes);
-        results.insert(results.end(), tmp.begin(), tmp.end());
+        convert(i, selected_scores, selected_boxes, img_size, results);
+        // results.insert(results.end(), tmp.begin(), tmp.end());
     }
     return results;
 }
 
-landmarks PostProcessing::convert(int i, const Tensor& scores,
-                                  const Tensor& boxes) {
-    std::vector<PostProcessing::Landmark> results;
+void PostProcessing::convert(int i, const Tensor& scores, const Tensor& boxes,
+                             const std::pair<float, float>& img_size,
+                             landmarks& results) {
+    // std::vector<PostProcessing::Landmark> results;
+    float img_width = img_size.first;
+    float img_height = img_size.second;
     for (int i = 0; i < scores.size(0); ++i) {
+        float xmin = boxes[i][0].item<float>() * img_width;
+        float ymin = boxes[i][1].item<float>() * img_height;
+        float xmax = boxes[i][2].item<float>() * img_width;
+        float ymax = boxes[i][3].item<float>() * img_height;
         PostProcessing::Landmark l;
-        float top = boxes[i][0].item<float>() * 300;
-        float confidence = scores[i][0].item<float>();
-        //std::cout << "the confidence is : " << confidence << std::endl;
-        l.top = top;
-        l.height = boxes[i][2].item<float>() * 300;
-        l.width = boxes[i][3].item<float>() * 300;
-        l.left = boxes[i][1].item<float>() * 300;
-        l.confidence = confidence;
+        l.left = xmin;
+        l.top = ymin;
+        l.width = xmax - xmin;
+        l.height = ymax - ymin;
+        l.confidence = scores[i].item<float>();
         l.label = i;
         results.push_back(l);
     }
-    return results;
 }
