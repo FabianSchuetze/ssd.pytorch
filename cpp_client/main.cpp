@@ -1,16 +1,15 @@
 #include <ATen/core/ivalue.h>
-#include <opencv2/imgproc.hpp>
 #include <torch/script.h>  // One-stop header.
 #include <torch/torch.h>
 #include <chrono>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <fstream>
-
 #include "DataProcessing.hpp"
 
 namespace fs = std::filesystem;
@@ -19,7 +18,7 @@ using namespace std::chrono;
 
 std::vector<std::string> load_images(const std::string& path) {
     std::vector<std::string> files;
-    for (const auto& img : fs::directory_iterator(path)) {
+    for (const auto& img : fs::recursive_directory_iterator(path)) {
         files.push_back(img.path());
     }
     return files;
@@ -30,14 +29,15 @@ void serialize_results(const std::string& file,
     std::ofstream myfile;
     size_t pos = file.find_last_of("/");
     std::string filename = file.substr(pos + 1);
-    std::cout << "the filename is: " << filename << std::endl;
-    std::string token = filename.substr(0, filename.find("."));
+    size_t pos_end = filename.find(".");
+    std::string token = filename.substr(0, pos_end);
     myfile.open("results/" + token + ".result", std::ios::trunc);
-    std::cout << "iterating over results, with size " <<  result.size() << std::endl;
+    std::cout << "iterating over results, with size " << result.size()
+              << std::endl;
     for (const PostProcessing::Landmark& res : result) {
-        myfile << "top :" << res.top << ", " << res.left << ", " <<
-            res.width << ", " << res.height << "; " << res.confidence <<
-            std::endl;
+        myfile << "top :" << res.top << ", " << res.left << ", " << res.width
+               << ", " << res.height << "; " << res.confidence
+               << "; label: " << res.label << std::endl;
     }
     myfile.close();
 }
@@ -57,28 +57,24 @@ int main(int argc, const char* argv[]) {
         std::cerr << "error loading the model\n";
         return -1;
     }
-    std::vector<torch::jit::IValue> inputs(1);
     std::string config =
         "/home/fabian/Documents/work/github/ssd.pytorch/cpp_client/params.txt";
-    PostProcessing detection(config);
-    PreProcessing preprocess(config);
     std::string path =
         "/home/fabian/data/TS/CrossCalibration/ImageTCL/greyscale/";
     std::vector<std::string> files = load_images(path);
+    PostProcessing detection(config);
+    PreProcessing preprocess(config);
+    std::vector<torch::jit::IValue> inputs(1);
     for (const std::string& img : files) {
         cv::Mat image, image_rgb;
-        image = cv::imread(img, CV_LOAD_IMAGE_COLOR);
+        try {
+            image = cv::imread(img, CV_LOAD_IMAGE_COLOR);
+        } catch (...) {
+            std::cout << "couldnt read img " << img << " continue\n ";
+            continue;
+        }
         cv::cvtColor(image, image_rgb, COLOR_BGR2RGB);
-        //namedWindow( "Display window", WINDOW_AUTOSIZE );// Create a window for display.
-        //imshow( "Display window", image_rgb);                   // Show our image inside it.
-        //waitKey(0);
-
-        //std::cout << img << std::endl;
         torch::Tensor tensor_image = preprocess.process(image_rgb);
-        torch::Tensor test = at::max(tensor_image);
-        std::cout << "the maximum is: " << test << std::endl;
-        //std::cout << tensor_image << std::endl;
-        //waitKey(0);
         torch::Device device(torch::kCPU);
         module.to(device);
         priors.to(device);  // move stuff to CPU
@@ -91,8 +87,8 @@ int main(int argc, const char* argv[]) {
                               priors.attr("priors").toTensor());
         auto stop = high_resolution_clock::now();
         auto duration = duration_cast<microseconds>(stop - start);
+        serialize_results(img, result);
         std::cout << "Time taken by function: at " << img << " "
                   << duration.count() << " microseconds" << std::endl;
-        serialize_results(img, result);
     }
 }

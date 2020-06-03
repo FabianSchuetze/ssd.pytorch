@@ -8,6 +8,7 @@ class PostProcessing {
    public:
     struct Landmark {
         float left, top, width, height, confidence;
+        int label;
     };
     PostProcessing(const std::string&);
     std::vector<Landmark> process(const torch::Tensor& localization,

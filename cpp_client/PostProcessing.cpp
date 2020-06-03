@@ -93,7 +93,9 @@ landmarks PostProcessing::convert(int i, const Tensor& scores,
         l.top = top;
         l.height = boxes[i][2].item<float>() * 300;
         l.width = boxes[i][3].item<float>() * 300;
+        l.left = boxes[i][1].item<float>() * 300;
         l.confidence = confidence;
+        l.label = i;
         results.push_back(l);
     }
     return results;
