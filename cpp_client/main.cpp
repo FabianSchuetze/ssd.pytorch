@@ -31,13 +31,21 @@ void serialize_results(const std::string& file,
     std::string filename = file.substr(pos + 1);
     size_t pos_end = filename.find(".");
     std::string token = filename.substr(0, pos_end);
-    myfile.open("results/" + token + ".result", std::ios::trunc);
-    std::cout << "iterating over results, with size " << result.size()
-              << std::endl;
+    std::string outfile = "results/" + token + ".result";
+    myfile.open(outfile, std::ios::trunc);
+    if (myfile.fail()) {
+        std::cout <<  "couldnt open file: " << outfile << std::endl;
+    } else {
+    //std::cout << "iterating over results, with size " << result.size()
+              //<< std::endl;
+    }
     for (const PostProcessing::Landmark& res : result) {
-        myfile << "top :" << res.top << ", " << res.left << ", " << res.width
-               << ", " << res.height << "; " << res.confidence
-               << "; label: " << res.label << std::endl;
+        float xmin = res.left;
+        float ymin = res.top;
+        float xmax = res.left + res.width;
+        float ymax = res.top + res.height;
+        myfile << xmin << ", " << ymin << ", " << xmax <<  ", " << ymax 
+               << ", " << res.confidence << ", " << res.label << std::endl;
     }
     myfile.close();
 }
@@ -58,26 +66,27 @@ int main(int argc, const char* argv[]) {
         return -1;
     }
     std::string config =
-        "/home/fabian/Documents/work/github/ssd.pytorch/cpp_client/params.txt";
+        "/home/fabian/github/ssd.pytorch/cpp_client/params.txt";
     std::string path =
-        "/home/fabian/data/TS/CrossCalibration/ImageTCL/greyscale/";
+        "/home/fabian/CrossCalibration/ImageTCL/greyscale/";
     std::vector<std::string> files = load_images(path);
     PostProcessing detection(config);
     PreProcessing preprocess(config);
     std::vector<torch::jit::IValue> inputs(1);
     for (const std::string& img : files) {
-        cv::Mat image, image_rgb;
+        std::cout << "loading file : " << img << std::endl;
+        cv::Mat image;
         try {
-            image = cv::imread(img, CV_LOAD_IMAGE_COLOR);
+            cv::Mat tmp = cv::imread(img, cv::IMREAD_COLOR);
+            cv::cvtColor(tmp, image, COLOR_BGR2RGB);
         } catch (...) {
             std::cout << "couldnt read img " << img << " continue\n ";
             continue;
         }
-        cv::cvtColor(image, image_rgb, COLOR_BGR2RGB);
         int height = image.size().height;
         int width = image.size().width;
         std::pair<float, float> size = std::make_pair(height, width);
-        torch::Tensor tensor_image = preprocess.process(image_rgb);
+        torch::Tensor tensor_image = preprocess.process(image);
         torch::Device device(torch::kCPU);
         module.to(device);
         priors.to(device);  // move stuff to CPU
@@ -91,7 +100,7 @@ int main(int argc, const char* argv[]) {
         auto stop = high_resolution_clock::now();
         auto duration = duration_cast<microseconds>(stop - start);
         serialize_results(img, result);
-        std::cout << "Time taken by function: at " << img << " "
-                  << duration.count() << " microseconds" << std::endl;
+        //std::cout << "Time taken by function: at " << img << " "
+                  //<< duration.count() << " microseconds" << std::endl;
     }
 }

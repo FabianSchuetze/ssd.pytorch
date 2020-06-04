@@ -38,10 +38,21 @@ class FacesDB(data.Dataset):
         self.transform = transform
         # self.target_transform = target_transform
         self.name = 'Faces'
+        self._filepath_storage = self._make_key_location_pair()
 
     def _load_images(self):
         tree = ET.parse(self._database)
         return tree.findall('images/image')
+
+    def _make_key_location_pair(self):
+        """
+        Specifies the filename as index and the index in self.ids as value
+        """
+        storage = {}
+        for idx, val in enumerate(self.ids):
+            filename = val.get('file').rsplit('/')[-1]
+            storage[filename] = idx
+        return storage
 
     def _convert_to_box(self, box: ET.Element) -> List[int]:
         """
@@ -123,22 +134,14 @@ class FacesDB(data.Dataset):
         img = cv2.imread(sample.get('file'))
         return img
 
-    # def pull_anno(self, index):
-        # '''Returns the original annotation of image at index
-
-        # Note: not using self.__getitem__(), as any transformations passed in
-        # could mess up this functionality.
-
-        # Argument:
-            # index (int): index of img to get annotation of
-        # Return:
-            # list:  [img_id, [(label, bbox coords),...]]
-                # eg: ('001718', [('dog', (96, 13, 438, 332))])
-        # '''
-        # img_id = self.ids[index]
-        # anno = ET.parse(self._annopath % img_id).getroot()
-        # gt = self.target_transform(anno, 1, 1)
-        # return img_id[1], gt
+    def pull_anno(self, filename: str):
+        """
+        Returns the annotation of the image. In contrast to the other images,
+        this function takes a string as an argument which corresponsed to the
+        filename
+        """
+        img_id = self._filepath_storage[filename]
+        return self.pull_item(img_id)[1]
 
     def pull_tensor(self, index):
         '''Returns the original image at an index in tensor form
