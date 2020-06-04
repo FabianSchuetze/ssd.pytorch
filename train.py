@@ -125,8 +125,10 @@ def train():
                                                          MEANS))
     elif args.dataset == 'Faces':
         cfg = faces
-        dataset = FacesDB('/home/fabian/data/TS/TCLObjectDetectionDatabase/out.xml',
-                          transform=SmallAugmentation(cfg['min_dim'], MEANS))
+        path = '/home/fabian/data/TS/CrossCalibration/TCLObjectDetectionDatabase'
+        path += '/greyscale_combined.xml'
+        # path += '/depthscale_combined_ssd.xml'
+        dataset = FacesDB(path, transform=SmallAugmentation(cfg['min_dim'], MEANS))
 
     if args.visdom:
         import visdom

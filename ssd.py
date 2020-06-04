@@ -98,7 +98,7 @@ class SSD(nn.Module):
         if self.phase == "test":
             output = (
                 loc.view(loc.size(0), -1, 4),
-                conf.view(conf.size(0), -1, self.num_classes)
+                self.softmax(conf.view(conf.size(0), -1, self.num_classes))
             )
             # output = self.detect(
                 # loc.view(loc.size(0), -1, 4),                   # loc preds
