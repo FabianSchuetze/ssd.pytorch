@@ -96,7 +96,7 @@ def load_dataset():
     """
     Returns the dataset"""
     cfg = config.faces
-    path = '/home/fabian/CrossCalibration/TCLObjectDetectionDatabase'
+    path = '/home/fabian/data/TS/CrossCalibration/TCLObjectDetectionDatabase'
     path += '/greyscale_combined.xml'
     return FacesDB(path, transform=SmallAugmentation(cfg['min_dim'],
                                                      config.MEANS))

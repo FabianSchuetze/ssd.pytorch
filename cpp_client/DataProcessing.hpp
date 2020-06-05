@@ -6,7 +6,7 @@
 class PostProcessing {
    public:
     struct Landmark {
-        float left, top, width, height, confidence;
+        float xmin, xmax, ymin, ymax, confidence;
         int label;
     };
     PostProcessing(const std::string&);

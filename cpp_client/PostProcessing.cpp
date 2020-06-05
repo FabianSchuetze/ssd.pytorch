@@ -16,11 +16,15 @@ PostProcessing::PostProcessing(const std::string& config)
       _conf_thresh(0),
       _nms_thresh(0),
       _variances(2) {
-    // std::cout << "the path is: " << config << std::endl;
+     std::cout << "the path is for PostProcessing: " << config << std::endl;
     std::ifstream paramFile{config};
     std::map<std::string, std::string> params{
         std::istream_iterator<kv_pair>{paramFile},
         std::istream_iterator<kv_pair>{}};
+    std::cout << "the size of the map is: " << params.size() << std::endl;
+    for (auto ele : params) {
+        std::cout << ele.first << ", " << ele.second << std::endl;
+    }
     _num_classes = std::stoi(params["num_classes"]);
     _bkg_label = std::stoi(params["bkg_label"]);
     _conf_thresh = std::stof(params["conf_thresh"]);
@@ -43,12 +47,15 @@ void PostProcessing::print_arguments() {
               << std::endl;
 }
 
+//TODO: This is not correct. I need to looks at the python implementation
 Tensor PostProcessing::decode(const Tensor& loc, const Tensor& priors) {
     Tensor left = priors.slice(1, 0, 2) +
                   loc.slice(1, 0, 2) * _variances[0] * priors.slice(1, 2);
     Tensor right =
         priors.slice(1, 2) + torch::exp(loc.slice(1, 0, 2) * _variances[1]);
     Tensor boxes = torch::cat({left, right}, 1);
+    boxes.slice(1, 0, 2) -=boxes.slice(1, 2) / 2;
+    boxes.slice(1, 2) += boxes.slice(1, 0, 2);
     return boxes;
 }
 
@@ -86,18 +93,18 @@ void PostProcessing::convert(int i, const Tensor& scores, const Tensor& boxes,
                              const std::pair<float, float>& img_size,
                              landmarks& results) {
     // std::vector<PostProcessing::Landmark> results;
-    float img_width = img_size.first;
-    float img_height = img_size.second;
+    //float img_width = img_size.first;
+    //float img_height = img_size.second;
     for (int i = 0; i < scores.size(0); ++i) {
-        float xmin = boxes[i][0].item<float>() * img_width;
-        float ymin = boxes[i][1].item<float>() * img_height;
-        float xmax = boxes[i][2].item<float>() * img_width;
-        float ymax = boxes[i][3].item<float>() * img_height;
+        float xmin = boxes[i][0].item<float>() * 300;
+        float ymin = boxes[i][1].item<float>() * 300;
+        float xmax = boxes[i][2].item<float>() * 300;
+        float ymax = boxes[i][3].item<float>() * 300;
         PostProcessing::Landmark l;
-        l.left = xmin;
-        l.top = ymin;
-        l.width = xmax - xmin;
-        l.height = ymax - ymin;
+        l.xmin = xmin;
+        l.ymin = ymin;
+        l.xmax = xmax;
+        l.ymax = ymax;
         l.confidence = scores[i].item<float>();
         l.label = i;
         results.push_back(l);

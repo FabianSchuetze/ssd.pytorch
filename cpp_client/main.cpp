@@ -1,6 +1,7 @@
 #include <ATen/core/ivalue.h>
 #include <torch/script.h>  // One-stop header.
 #include <torch/torch.h>
+
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -10,6 +11,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+
 #include "DataProcessing.hpp"
 
 namespace fs = std::filesystem;
@@ -34,18 +36,16 @@ void serialize_results(const std::string& file,
     std::string outfile = "results/" + token + ".result";
     myfile.open(outfile, std::ios::trunc);
     if (myfile.fail()) {
-        std::cout <<  "couldnt open file: " << outfile << std::endl;
+        std::cout << "couldnt open file: " << outfile << std::endl;
     } else {
-    //std::cout << "iterating over results, with size " << result.size()
-              //<< std::endl;
-    }
-    for (const PostProcessing::Landmark& res : result) {
-        float xmin = res.left;
-        float ymin = res.top;
-        float xmax = res.left + res.width;
-        float ymax = res.top + res.height;
-        myfile << xmin << ", " << ymin << ", " << xmax <<  ", " << ymax 
-               << ", " << res.confidence << ", " << res.label << std::endl;
+        for (const PostProcessing::Landmark& res : result) {
+            float xmin = res.xmin;
+            float ymin = res.ymin;
+            float xmax = res.xmax;
+            float ymax = res.ymax;
+            myfile << xmin << ", " << ymin << ", " << xmax << ", " << ymax
+                   << ", " << res.confidence << ", " << res.label << std::endl;
+        }
     }
     myfile.close();
 }
@@ -66,9 +66,8 @@ int main(int argc, const char* argv[]) {
         return -1;
     }
     std::string config =
-        "/home/fabian/github/ssd.pytorch/cpp_client/params.txt";
-    std::string path =
-        "/home/fabian/CrossCalibration/ImageTCL/greyscale/";
+        "/home/fabian/Documents/work/github/ssd.pytorch/cpp_client/params.txt";
+    std::string path = "/home/fabian/data/TS/CrossCalibration/ImageTCL/greyscale/";
     std::vector<std::string> files = load_images(path);
     PostProcessing detection(config);
     PreProcessing preprocess(config);
@@ -100,7 +99,7 @@ int main(int argc, const char* argv[]) {
         auto stop = high_resolution_clock::now();
         auto duration = duration_cast<microseconds>(stop - start);
         serialize_results(img, result);
-        //std::cout << "Time taken by function: at " << img << " "
-                  //<< duration.count() << " microseconds" << std::endl;
+        // std::cout << "Time taken by function: at " << img << " "
+        //<< duration.count() << " microseconds" << std::endl;
     }
 }
