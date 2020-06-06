@@ -96,9 +96,9 @@ int main(int argc, const char* argv[]) {
         inputs[0] = tensor_image;
         auto start = high_resolution_clock::now();
         auto outputs = module.forward(inputs).toTuple();
-        torch::Tensor prediction = outputs->elements()[0].toTensor();
-        std::cout << "prediction slice:\n" << 
-            prediction.slice(/*dim=*/1, /*start=*/0, /*end=*/4) << '\n';
+        torch::Tensor prediction = outputs->elements()[1].toTensor();
+        //std::cout << "prediction slice:\n" << 
+            //prediction.slice([>dim=*/1, /*start=*/0, /*end=<]4) << '\n';
         std::vector<PostProcessing::Landmark> result =
             detection.process(outputs->elements()[0].toTensor(),
                               outputs->elements()[1].toTensor(),
