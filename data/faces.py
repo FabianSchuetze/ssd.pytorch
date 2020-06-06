@@ -73,10 +73,9 @@ class FacesDB(data.Dataset):
 
     def _load_sample(self, idx) -> Tuple[List]:
         sample = self.ids[idx]
-        img = Image.open(sample.get('file'))
-        if img.mode == 'L':
-            img = img.convert('RGB')
-        height, width = img.height, img.width
+        img = cv2.imread(sample.get('file'))
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        height, width, _ = img.shape
         res = []
         for tag in sample.findall('box'):
             sample = []
@@ -89,28 +88,20 @@ class FacesDB(data.Dataset):
         return img, res, height, width
 
     def pull_item(self, index: int):
-        # breakpoint()
         img, target, height, width = self._load_sample(index)
-        img = F.to_tensor(img)
-        img = img.numpy().transpose(1, 2, 0)
-
+        img = cv2.resize(img, (300, 300))
+        img = (img / 255).astype(np.float32)
         #TODO: I NEED TO ADD THIS AS I ALWAYS TRANFORMS!!!
         # if self.target_transform is not None:
             # target = self.target_transform(target, width, height)
-
-
         if self.transform is not None:
             target = np.array(target)
-            img, boxes, labels = self.transform(img, target[:, :4], target[:, 4])
-            # to rgb
-            # img = img[:, :, (2, 1, 0)]
-            # img = img.transpose(2, 0, 1)
+            boxes, labels = target[:, :4], target[:, 4]
+            # img, boxes, labels = self.transform(img, target[:, :4], target[:, 4])
             target = np.hstack((boxes, np.expand_dims(labels, axis=1)))
-        # img = img.astype(float)
-        # img = F.resize(img, (300, 300))
-        img = F.to_tensor(img)
+        # breakpoint()
+        img = torch.from_numpy(img.transpose(2, 0, 1))
         return img, target, height, width
-        # return torch.from_numpy(img), target, height, width
 
     def __getitem__(self, index):
         img, gts = self.pull_item(index)[:2]

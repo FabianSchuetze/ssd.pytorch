@@ -494,7 +494,7 @@ def test_net(save_folder, net, cuda, dataset, transform, top_k,
         if args.cuda:
             x = x.cuda()
         _t['im_detect'].tic()
-        breakpoint()
+        # breakpoint()
         loc, conf = net(x)
         detections = net.detect(loc, conf, net.priors).data
         detect_time = _t['im_detect'].toc(average=False)
@@ -544,7 +544,7 @@ def evaluate_detections(box_list, output_dir, dataset):
 if __name__ == '__main__':
     # load net
     # labelmap = 4
-    breakpoint()
+    # breakpoint()
     labelmap = ('left_eye', 'right_eye', 'nose_tip', 'glabella')
     num_classes = len(labelmap) + 1                      # +1 for background
     net = build_ssd('test', 300, num_classes)            # initialize SSD

@@ -39,7 +39,7 @@ class Detect(torch.nn.Module):
                                     self.num_classes).transpose(2, 1)
 
         # Decode predictions into bboxes.
-        breakpoint()
+        # breakpoint()
         for out, data, pred in zip(output, loc_data, conf_preds):
             decoded_boxes = decode(data, prior_data, self.variance)
             # For each class, perform nms
