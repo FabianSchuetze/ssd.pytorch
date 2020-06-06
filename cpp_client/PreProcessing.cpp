@@ -21,6 +21,7 @@ torch::Tensor PreProcessing::process(const cv::Mat& img) {
     cv::Mat transformed;
     cv::Size sz(_size, _size);
     cv::resize(img, transformed, sz);
+    cv::imwrite("here.png", transformed);
     at::Tensor tensor_img =
         torch::from_blob(transformed.data, {1, _size, _size, 3}, at::kByte);
     tensor_img = tensor_img.to(at::kFloat);
