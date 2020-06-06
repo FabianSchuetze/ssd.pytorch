@@ -94,7 +94,7 @@ landmarks PostProcessing::process(const Tensor& localization,
     return results;
 }
 
-void PostProcessing::convert(int i, const Tensor& scores, const Tensor& boxes,
+void PostProcessing::convert(int label, const Tensor& scores, const Tensor& boxes,
                              const std::pair<float, float>& img_size,
                              landmarks& results) {
     // std::vector<PostProcessing::Landmark> results;
@@ -111,7 +111,7 @@ void PostProcessing::convert(int i, const Tensor& scores, const Tensor& boxes,
         l.xmax = xmax;
         l.ymax = ymax;
         l.confidence = scores[i].item<float>();
-        l.label = i;
+        l.label = label;
         results.push_back(l);
     }
 }

@@ -39,11 +39,11 @@ class Detect(torch.nn.Module):
                                     self.num_classes).transpose(2, 1)
 
         # Decode predictions into bboxes.
-        # breakpoint()
         for out, data, pred in zip(output, loc_data, conf_preds):
             decoded_boxes = decode(data, prior_data, self.variance)
             # For each class, perform nms
             conf_scores = pred.clone()
+            # breakpoint()
 
             for cl in range(1, self.num_classes):
                 c_mask = conf_scores[cl].gt(self.conf_thresh)

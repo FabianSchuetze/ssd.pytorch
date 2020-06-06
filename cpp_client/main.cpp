@@ -69,15 +69,14 @@ int main(int argc, const char* argv[]) {
         "/home/fabian/Documents/work/github/ssd.pytorch/cpp_client/params.txt";
     std::string path =
         "/home/fabian/data/TS/CrossCalibration/ImageTCL/greyscale/";
-    // std::vector<std::string> files = load_images(path);
+     std::vector<std::string> files = load_images(path);
     PostProcessing detection(config);
     PreProcessing preprocess(config);
     std::vector<torch::jit::IValue> inputs(1);
-    std::vector<std::string> files = {
-        "/home/fabian/data/TS/CrossCalibration/ImageTCL/greyscale/ignores/"
-        "2019-08-13_bch_s011_170327_PCL_078280.png"};
+    //std::vector<std::string> files = {
+        //"/home/fabian/data/TS/CrossCalibration/ImageTCL/greyscale/ignores/"
+        //"2019-08-13_bch_s011_170327_PCL_078280.png"};
     for (const std::string& img : files) {
-        std::cout << "loading file : " << img << std::endl;
         cv::Mat image;
         try {
             cv::Mat tmp = cv::imread(img, cv::IMREAD_COLOR);
@@ -97,8 +96,6 @@ int main(int argc, const char* argv[]) {
         auto start = high_resolution_clock::now();
         auto outputs = module.forward(inputs).toTuple();
         torch::Tensor prediction = outputs->elements()[1].toTensor();
-        //std::cout << "prediction slice:\n" << 
-            //prediction.slice([>dim=*/1, /*start=*/0, /*end=<]4) << '\n';
         std::vector<PostProcessing::Landmark> result =
             detection.process(outputs->elements()[0].toTensor(),
                               outputs->elements()[1].toTensor(),
@@ -106,7 +103,5 @@ int main(int argc, const char* argv[]) {
         auto stop = high_resolution_clock::now();
         auto duration = duration_cast<microseconds>(stop - start);
         serialize_results(img, result);
-        // std::cout << "Time taken by function: at " << img << " "
-        //<< duration.count() << " microseconds" << std::endl;
     }
 }

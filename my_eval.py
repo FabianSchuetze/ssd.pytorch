@@ -50,7 +50,7 @@ def eval_boxes(predictions, gts):
     eval: Dict:
         The results according to the coco metric. At IoU=0.5: VOC metric.
     """
-    breakpoint()
+    assert len(predictions) == len(gts), "Preds and gts must have sam len"
     pred_boxes, pred_labels, pred_scores = [], [], []
     gt_boxes, gt_labels = [], []
     for pred, gt in zip(predictions, gts):
@@ -58,19 +58,20 @@ def eval_boxes(predictions, gts):
             pred_boxes.append(_convert_box(pred['boxes']))
             pred_labels.append(np.array(pred['labels'], dtype=np.int32))
             pred_scores.append(np.array(pred['scores']))
-            gt_boxes.append(_convert_box(np.array(gt[:, :4])))
-            gt_labels.append(gt[:, 4])
+            gt_box, gt_label = convert_gt(gt)
+            gt_boxes.append(gt_box)
+            gt_labels.append(gt_label)
     res = eval_detection_coco(pred_boxes, pred_labels, pred_scores,
                               gt_boxes, gt_labels)
     return res
 
-def _parse_file(filenpath: str):
+def _parse_file(filepath: str):
     boxes, labels, scores = [], [], []
-    for line in open(filenpath).readlines():
+    for line in open(filepath).readlines():
         elements = line.split(',')
         boxes.append([float(i) for i in elements[:4]])
-        labels.append(float(elements[4]))
-        scores.append(float(elements[5]))
+        scores.append(float(elements[4]))
+        labels.append(float(elements[5]))
     return {'boxes': boxes, 'labels': labels, 'scores': scores}
 
 
@@ -80,7 +81,6 @@ def load_predictions_and_gts(folder: str, dataset) -> Tuple[List[Dict]]:
     """
     predictions = []
     gts = []
-    breakpoint()
     for file in os.listdir(folder):
         prediction = _parse_file(folder + file)
         new_file = file.split('.')[0] + '.png'
@@ -106,3 +106,4 @@ if __name__ == "__main__":
     PREDICTIONS, GTS = load_predictions_and_gts('cpp_client/build/results/',
                                                 FACES)
     RES = eval_boxes(PREDICTIONS, GTS)
+    print(RES['coco_eval'].__str__())
