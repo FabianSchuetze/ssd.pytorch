@@ -90,8 +90,6 @@ int main(int argc, const char* argv[]) {
         int width = image.size().width;
         std::pair<float, float> size = std::make_pair(height, width);
         torch::Tensor tensor_image = preprocess.process(image);
-        //std::cout << "input tensor:\n" << 
-            //tensor_image.slice([>dim=*/2, /*start=*/0, /*end=<]4) << std::endl;
         torch::Device device(torch::kCPU);
         module.to(device);
         priors.to(device);  // move stuff to CPU
@@ -99,8 +97,8 @@ int main(int argc, const char* argv[]) {
         auto start = high_resolution_clock::now();
         auto outputs = module.forward(inputs).toTuple();
         torch::Tensor prediction = outputs->elements()[0].toTensor();
-        std::cout << prediction.slice(/*dim=*/1, /*start=*/0, /*end=*/4)
-                  << '\n';
+        std::cout << "prediction slice:\n" << 
+            prediction.slice(/*dim=*/1, /*start=*/0, /*end=*/4) << '\n';
         std::vector<PostProcessing::Landmark> result =
             detection.process(outputs->elements()[0].toTensor(),
                               outputs->elements()[1].toTensor(),
