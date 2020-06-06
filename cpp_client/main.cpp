@@ -68,7 +68,7 @@ int main(int argc, const char* argv[]) {
     std::string config =
         "/home/fabian/Documents/work/github/ssd.pytorch/cpp_client/params.txt";
     std::string path =
-        "/home/fabian/data/TS/CrossCalibration/ImageTCL/greyscale/";
+        "/home/fabian/data/TS/CrossCalibration/ImageTCL/test/";
      std::vector<std::string> files = load_images(path);
     PostProcessing detection(config);
     PreProcessing preprocess(config);
@@ -82,7 +82,7 @@ int main(int argc, const char* argv[]) {
             cv::Mat tmp = cv::imread(img, cv::IMREAD_COLOR);
             cv::cvtColor(tmp, image, COLOR_BGR2RGB);
         } catch (...) {
-            std::cout << "couldnt read img " << img << " continue\n ";
+            std::cout << "couldnt read img " << img << "; continue\n ";
             continue;
         }
         int height = image.size().height;

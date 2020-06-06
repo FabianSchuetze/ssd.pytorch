@@ -17,15 +17,10 @@ PostProcessing::PostProcessing(const std::string& config)
       _conf_thresh(0),
       _nms_thresh(0),
       _variances(2) {
-    std::cout << "the path is for PostProcessing: " << config << std::endl;
     std::ifstream paramFile{config};
     std::map<std::string, std::string> params{
         std::istream_iterator<kv_pair>{paramFile},
         std::istream_iterator<kv_pair>{}};
-    std::cout << "the size of the map is: " << params.size() << std::endl;
-    for (auto ele : params) {
-        std::cout << ele.first << ", " << ele.second << std::endl;
-    }
     _num_classes = std::stoi(params["num_classes"]);
     _top_k = std::stoi(params["top_k"]);
     _bkg_label = std::stoi(params["bkg_label"]);
@@ -67,14 +62,10 @@ landmarks PostProcessing::process(const Tensor& localization,
     std::vector<PostProcessing::Landmark> results;
     int num_priors = priors.size(0);
     Tensor output = torch::empty({0, 5});
-    // Tensor output = torch::empty({0, _num_classes, _top_k, 5});
     Tensor conf_preds = confidence.view({num_priors, _num_classes});
     conf_preds = conf_preds.transpose(1, 0);
     Tensor bounding_boxes = localization.squeeze(0);
-    //std::cout << "bounding_boxes:\n" << bounding_boxes << '\n';
-    //std::cout << "priors:\n" << priors << '\n';
     Tensor decoded_boxes = decode(bounding_boxes, priors);
-    //std::cout << "decoded boxes:\n" << decoded_boxes << '\n';
     Tensor conf_scores = conf_preds.clone();
     for (int i = 1; i < _num_classes; ++i) {
         Tensor cur = conf_scores.slice(0, i, i + 1);
@@ -89,7 +80,6 @@ landmarks PostProcessing::process(const Tensor& localization,
         Tensor selected_scores = scores.index_select(0, ids);
         Tensor selected_boxes = boxes.index_select(0, ids);
         convert(i, selected_scores, selected_boxes, img_size, results);
-        // results.insert(results.end(), tmp.begin(), tmp.end());
     }
     return results;
 }
@@ -97,9 +87,6 @@ landmarks PostProcessing::process(const Tensor& localization,
 void PostProcessing::convert(int label, const Tensor& scores, const Tensor& boxes,
                              const std::pair<float, float>& img_size,
                              landmarks& results) {
-    // std::vector<PostProcessing::Landmark> results;
-    // float img_width = img_size.first;
-    // float img_height = img_size.second;
     for (int i = 0; i < scores.size(0); ++i) {
         float xmin = boxes[i][0].item<float>() * 300;
         float ymin = boxes[i][1].item<float>() * 300;
