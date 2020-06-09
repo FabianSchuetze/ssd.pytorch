@@ -22,12 +22,12 @@ PostProcessing::PostProcessing(const std::string& config)
         std::istream_iterator<kv_pair>{paramFile},
         std::istream_iterator<kv_pair>{}};
     _num_classes = std::stoi(params["num_classes"]);
-    _top_k = std::stoi(params["top_k"]);
-    _bkg_label = std::stoi(params["bkg_label"]);
-    _conf_thresh = std::stof(params["conf_thresh"]);
-    _nms_thresh = std::stof(params["nms_thresh"]);
-    _variances[0] = std::stof(params["variance_0"]);
-    _variances[1] = std::stof(params["variance_1"]);
+    _top_k = std::stoi(params.at("top_k"));
+    _bkg_label = std::stoi(params.at("bkg_label"));
+    _conf_thresh = std::stof(params.at("conf_thresh"));
+    _nms_thresh = std::stof(params.at("nms_thresh"));
+    _variances[0] = std::stof(params.at("variance_0"));
+    _variances[1] = std::stof(params.at("variance_1"));
     print_arguments();
 
     ;
