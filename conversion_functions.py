@@ -71,6 +71,28 @@ def new_size():
     ymax = min(300, ymin + height)
     return xmin, ymin, xmax, ymax
 
+def reorient_boxes(cropped_img, target: np.ndarray, xmin, ymin, xmax, ymax):
+    # new_target = np.array(new_target)*300
+    zero_aligned = np.ones((300, 300, 3))
+    zero_aligned[:ymax - ymin, :xmax - xmin, :] = cropped_img
+    # x_scale = 300 / crop.shape[1]
+    # y_scale = 300 / crop.shape[0]
+    target[:, 0] -= xmin
+    target[:, 1] -= ymin
+    target[:, 2] -= xmin
+    target[:, 3] -= ymin
+    return target, zero_aligned
+
+def resize(target: np.ndarray, crop):
+    x_scale = 300 / crop.shape[1]
+    y_scale = 300 / crop.shape[0]
+    target[:, 0] *= x_scale
+    target[:, 1] *= y_scale
+    target[:, 2] *= x_scale
+    target[:, 3] *= y_scale
+    resized_img = cv2.resize(crop, (300, 300))
+    return target, resized_img
+
 if __name__ == "__main__":
     path = '/home/fabian/data/TS/CrossCalibration/TCLObjectDetectionDatabase'
     path += '/greyscale.xml'
@@ -81,25 +103,23 @@ if __name__ == "__main__":
         img = np.array(img).transpose(1, 2, 0)
         xmin, ymin, xmax, ymax = new_size()
         crop = img[ymin:ymax, xmin: xmax, :]
-        # resized = cv2.resize(crop, (300, 300))
         new_target = adjust_target(crop, target, xmin, ymin, xmax, ymax)
-        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, sharey=True,
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex=True, sharey=True,
                                        gridspec_kw={'height_ratios': [1, 1]})
         resized = np.ones((300, 300, 3))
         resized[ymin:ymax, xmin:xmax, :] = crop
         _visualize_box(resized, np.array(new_target)*300, ax1)
-        _visualize_box(img, np.array(target)*300, ax2)
-    # if len(new_target) > 0:
-        # # x_scale = 300 / crop.shape[1]
-        # # y_scale = 300 / crop.shape[0]
-        # # new_target[:, 0] *= x_scale
-        # # new_target[:, 1] *= y_scale
-        # # new_target[:, 2] *= x_scale
-        # # new_target[:, 3] *= y_scale
-        # _visualize_box(crop, new_target, ax1)
+        _visualize_box(img, np.array(target)*300, ax3)
+        if len(new_target) > 0:
+            new_target, zero_aligned =\
+                reorient_boxes(crop, np.array(new_target)*300, xmin, ymin,
+                               xmax, ymax)
+            _visualize_box(zero_aligned, new_target, ax2)
+            resized_target, resized_img, = resize(new_target, crop)
+            _visualize_box(resized_img, resized_target, ax4)
+            # _visualize_box(crop, new_target, ax1)
     # else:
         # ax1.imshow(crop)
-    # _visualize_box(img, np.array(target)*300, ax2)
         plt.show(block=False)
         i = input("quit when q:")
         if i == "q":
