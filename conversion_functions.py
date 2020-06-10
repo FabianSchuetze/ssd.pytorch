@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
 def box_fits(box, xmin, ymin, xmax, ymax):
-    xaxis = (box[0] > xmin) and (box[2] < xmax - xmin)
-    yaxis = (box[1] > ymin) and (box[3] < ymax - ymin)
+    xaxis = (box[0] > xmin) and (box[2] < xmax)
+    yaxis = (box[1] > ymin) and (box[3] < ymax)
     return xaxis and yaxis
 
 def modify_sizes(img, box, xmin, ymin, xmax, ymax):
@@ -28,16 +28,18 @@ def adjust_target(img, boxes, xmin, ymin, xmax, ymax):
     Adjusts the targets to fit the subset specified by  all the ingredients
     above
     """
+    # breakpoint()
     fits = []
     xscale = 300
     yscale = 300
     for box in boxes:
         if box_fits(box, xmin/xscale, ymin/yscale, xmax/xscale, ymax/yscale):
             fits.append(box)
-    # breakpoint()
-    if len(fits) > 0:
-        return modify_sizes(img, fits, xmin, ymin, xmax, ymax)
-    return []
+    return fits
+    # # breakpoint()
+    # if len(fits) > 0:
+        # return modify_sizes(img, fits, xmin, ymin, xmax, ymax)
+    # return []
 
 def area(boxes):
     if type(boxes) == list:
@@ -61,28 +63,32 @@ def _visualize_box(img, boxes, axis) -> None:
         _add_patch(rec, axis, color='g')
     return fig
 
-if __name__ == "__main__":
-    path = '/home/fabian/data/TS/CrossCalibration/TCLObjectDetectionDatabase'
-    path += '/greyscale.xml'
-    dataset = FacesDB(path)
-    np.random.seed(0)
-    # for i in range(0, 20):
-    img, target = dataset[20]
+def new_size():
     xmin = np.random.randint(0, 50)
     ymin = np.random.randint(0, 50)
     width, height = np.random.randint(100, 300), np.random.randint(100, 300)
     xmax = min(300, xmin + width)
     ymax = min(300, ymin + height)
-    img = np.array(img).transpose(1, 2, 0)
-    crop = img[xmin:xmax, ymin: ymax, :]
-    # resized = cv2.resize(crop, (300, 300))
-    new_target = adjust_target(crop, target, xmin, ymin, xmax, ymax)
-    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True,  sharey=True,
-                                   gridspec_kw={'height_ratios': [1, 1]})
-    resized = np.ones((300, 300, 3))
-    resized[xmin:xmax, ymin:ymax, :] = crop
-    _visualize_box(resized, new_target, ax1)
-    _visualize_box(img,  np.array(target)*300, ax2)
+    return xmin, ymin, xmax, ymax
+
+if __name__ == "__main__":
+    path = '/home/fabian/data/TS/CrossCalibration/TCLObjectDetectionDatabase'
+    path += '/greyscale.xml'
+    dataset = FacesDB(path)
+    np.random.seed(0)
+    for i in range(0, 20):
+        img, target = dataset[i]
+        img = np.array(img).transpose(1, 2, 0)
+        xmin, ymin, xmax, ymax = new_size()
+        crop = img[ymin:ymax, xmin: xmax, :]
+        # resized = cv2.resize(crop, (300, 300))
+        new_target = adjust_target(crop, target, xmin, ymin, xmax, ymax)
+        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, sharey=True,
+                                       gridspec_kw={'height_ratios': [1, 1]})
+        resized = np.ones((300, 300, 3))
+        resized[ymin:ymax, xmin:xmax, :] = crop
+        _visualize_box(resized, np.array(new_target)*300, ax1)
+        _visualize_box(img, np.array(target)*300, ax2)
     # if len(new_target) > 0:
         # # x_scale = 300 / crop.shape[1]
         # # y_scale = 300 / crop.shape[0]
@@ -94,6 +100,9 @@ if __name__ == "__main__":
     # else:
         # ax1.imshow(crop)
     # _visualize_box(img, np.array(target)*300, ax2)
-    # plt.show(block=False)
-    # plt.pause(2)
-    # plt.close('all')
+        plt.show(block=False)
+        i = input("quit when q:")
+        if i == "q":
+            plt.close('all')
+            break
+        plt.close('all')
