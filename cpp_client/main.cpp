@@ -69,6 +69,7 @@ int main(int argc, const char* argv[]) {
         "/home/fabian/Documents/work/github/ssd.pytorch/cpp_client/params.txt";
     std::string path =
         "/home/fabian/data/TS/CrossCalibration/ImageTCL/test/";
+    //std::string path = "/home/fabian/data/grayscale/";
      std::vector<std::string> files = load_images(path);
     PostProcessing detection(config);
     PreProcessing preprocess(config);
@@ -102,6 +103,7 @@ int main(int argc, const char* argv[]) {
                               priors.attr("priors").toTensor(), size);
         auto stop = high_resolution_clock::now();
         auto duration = duration_cast<microseconds>(stop - start);
+        std::cout << "finished " << img << " in " << duration.count() << std::endl;
         serialize_results(img, result);
     }
 }

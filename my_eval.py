@@ -8,6 +8,7 @@ import numpy as np
 from chainercv.evaluations import eval_detection_coco
 from data import FacesDB, config
 from utils.augmentations import SmallAugmentation
+import matplotlib.pyplot as plt
 
 
 
@@ -63,7 +64,7 @@ def eval_boxes(predictions, gts):
             gt_labels.append(gt_label)
     res = eval_detection_coco(pred_boxes, pred_labels, pred_scores,
                               gt_boxes, gt_labels)
-    return res
+    return res, gt_labels, pred_labels
 
 def _parse_file(filepath: str):
     boxes, labels, scores = [], [], []
@@ -92,6 +93,29 @@ def load_predictions_and_gts(folder: str, dataset) -> Tuple[List[Dict]]:
             continue
     return predictions, gts
 
+def barchart_frequency(gt_labels: List[np.ndarray], pred_labels: List[np.ndarray]):
+    """
+    Given gts and preds, the function plots a barchart with the frequency with
+    which the landmarks appear
+    """
+    breakpoint()
+    val_gt, count_gt = np.unique([len(np.unique(i)) for i in gt_labels], return_counts=True)
+    val_pred, count_pred = np.unique([len(np.unique(i)) for i in pred_labels], return_counts=True)
+    fig, ax = plt.subplots()
+    ind = np.arange(4)
+    width = 0.35         # the width of the bars
+    ax.bar(ind, count_gt / count_gt.sum(), width, color='green',
+           label='gt')
+    ax.bar(ind + width, count_pred / count_gt.sum(), width, color='red',
+           label='detector')
+    ax.set_xticks(ind + width / 2)
+    ax.set_xticklabels(('1', '2', '3', '4'))
+    ax.set_xlabel('Numer of Features in Image', fontsize=20)
+    ax.set_title('Distribution of Features in Ground-Truth and Detector',
+                 fontsize=20, fontweight='bold')
+    ax.legend(prop={'size': 20})
+    return fig
+
 def load_dataset():
     """
     Returns the dataset"""
@@ -105,5 +129,6 @@ if __name__ == "__main__":
     FACES = load_dataset()
     PREDICTIONS, GTS = load_predictions_and_gts('cpp_client/build/results/',
                                                 FACES)
-    RES = eval_boxes(PREDICTIONS, GTS)
+    RES,GT_LABELS, PRED_LABELS = eval_boxes(PREDICTIONS, GTS)
     print(RES['coco_eval'].__str__())
+    fig = barchart_frequency(GT_LABELS, PRED_LABELS)

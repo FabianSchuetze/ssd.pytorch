@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.quantization import QuantStub, DeQuantStub
 from torch.autograd import Variable
 from layers import *
 from data import voc, coco
@@ -43,6 +44,9 @@ class SSD(nn.Module):
         self.loc = nn.ModuleList(head[0])
         self.conf = nn.ModuleList(head[1])
 
+        self.quant = QuantStub()
+        self.dequant = DeQuantStub()
+
         if phase == 'test':
             self.softmax = nn.Softmax(dim=-1)
             self.detect = Detect(num_classes, 0, 200, 0.01, 0.45)
@@ -70,9 +74,12 @@ class SSD(nn.Module):
         loc = list()
         conf = list()
 
+        x = self.quant(x)
+
         # apply vgg up to conv4_3 relu
         for k in range(23):
             x = self.vgg[k](x)
+        x = self.dequant(x)
 
         s = self.L2Norm(x)
         sources.append(s)

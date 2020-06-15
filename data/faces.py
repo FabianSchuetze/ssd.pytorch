@@ -8,8 +8,7 @@ import torch
 import torch.utils.data as data
 import cv2
 import numpy as np
-from PIL import Image
-from torchvision.transforms import functional as F
+from .conversion_functions import Cropping, visualize_box
 
 
 class FacesDB(data.Dataset):
@@ -36,6 +35,7 @@ class FacesDB(data.Dataset):
         self._conversion = {'glabella': 0, 'left_eye':1, 'right_eye':2,
                             'nose_tip': 3}
         self.transform = transform
+        self._Crop = Cropping()
         # self.target_transform = target_transform
         self.name = 'Faces'
         self._filepath_storage = self._make_key_location_pair()
@@ -91,6 +91,13 @@ class FacesDB(data.Dataset):
         img, target, height, width = self._load_sample(index)
         img = cv2.resize(img, (300, 300))
         img = (img / 255).astype(np.float32)
+        # if np.random.rand() < 0.3:
+            # while True:
+                # try:
+                    # img, target = self._Crop.resize(img, target)
+                    # break
+                # except IndexError:
+                    # pass
         #TODO: I NEED TO ADD THIS AS I ALWAYS TRANFORMS!!!
         # if self.target_transform is not None:
             # target = self.target_transform(target, width, height)
@@ -110,19 +117,26 @@ class FacesDB(data.Dataset):
     def __len__(self):
         return len(self.ids)
 
-    def pull_image(self, index):
-        '''Returns the original image object at index in PIL form
+    def pull_image(self, filename: str):
+        """
+        Returns the original image as numpy array
 
-        Note: not using self.__getitem__(), as any transformations passed in
-        could mess up this functionality.
+        Paramters
+        --------
+        index: int
+            The location of the image in the database
 
-        Argument:
-            index (int): index of img to show
-        Return:
-            PIL img
-        '''
+        Returns
+        -------
+        img: np.array
+            The image
+        """
+        index = self._filepath_storage[filename]
         sample = self.ids[index]
         img = cv2.imread(sample.get('file'))
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = cv2.resize(img, (300, 300))
+        img = (img / 255).astype(np.float32)
         return img
 
     def pull_anno(self, filename: str):

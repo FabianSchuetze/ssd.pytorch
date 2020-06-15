@@ -6,7 +6,6 @@
 
 from __future__ import print_function
 import torch
-import torch.nn as nn
 import torch.backends.cudnn as cudnn
 from torch.autograd import Variable
 from data import VOC_ROOT, VOCAnnotationTransform, VOCDetection, BaseTransform
@@ -15,6 +14,7 @@ from data import FacesDB
 from data import *
 import torch.utils.data as data
 from utils.augmentations import SSDAugmentation, SmallAugmentation
+import shutil
 
 from ssd import build_ssd
 from chainercv.evaluations import eval_detection_coco, \
@@ -495,6 +495,10 @@ def test_net(save_folder, net, cuda, dataset, transform, top_k,
             x = x.cuda()
         _t['im_detect'].tic()
         # breakpoint()
+        # filename = dataset.ids[i].get('file')
+        # shutil.copy2(filename,
+                # '/home/fabian/data/TS/CrossCalibration/ImageTCL/test')
+        # print(filename)
         loc, conf = net(x)
         detections = net.detect(loc, conf, net.priors).data
         detect_time = _t['im_detect'].toc(average=False)
@@ -554,6 +558,8 @@ if __name__ == '__main__':
         net.load_state_dict(torch.load(args.trained_model,
                                        map_location='cpu'))
     net.eval()
+    net.qconfig = torch.quantization.get_default_qconfig('fbgemm')
+    torch.quantization.prepare(net, inplace=True)
     print('Finished loading model!')
     # load data
     if args.dataset == 'VOC':
@@ -563,13 +569,17 @@ if __name__ == '__main__':
     elif args.dataset == 'Faces':
         cfg = faces
         path = '/home/fabian/data/TS/CrossCalibration/TCLObjectDetectionDatabase'
-        path += '/greyscale_combined.xml'
+        path += '/greyscale.xml'
         dataset = FacesDB(path, transform=SmallAugmentation(cfg['min_dim'], MEANS))
     # breakpoint()
     if args.cuda:
         net = net.cuda()
         cudnn.benchmark = True
     # evaluation
+    test_net(args.save_folder, net, args.cuda, dataset,
+             BaseTransform(net.size, dataset_mean), args.top_k, 300,
+             thresh=args.confidence_threshold)
+    torch.quantization.convert(net, inplace=True)
     test_net(args.save_folder, net, args.cuda, dataset,
              BaseTransform(net.size, dataset_mean), args.top_k, 300,
              thresh=args.confidence_threshold)

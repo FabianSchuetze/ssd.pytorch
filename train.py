@@ -126,9 +126,10 @@ def train():
     elif args.dataset == 'Faces':
         cfg = faces
         path = '/home/fabian/data/TS/CrossCalibration/TCLObjectDetectionDatabase'
-        path += '/greyscale_combined.xml'
+        path += '/greyscale.xml'
         # path += '/depthscale_combined_ssd.xml'
-        dataset = FacesDB(path, transform=SmallAugmentation(cfg['min_dim'], MEANS))
+        dataset = FacesDB(path)
+        # transform=SmallAugmentation(cfg['min_dim'], MEANS))
 
     if args.visdom:
         import visdom

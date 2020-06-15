@@ -91,6 +91,6 @@ def visualize_prediction(predictions, images):
 if __name__ == "__main__":
     FACES = load_dataset()
     RESULTS = 'cpp_client/build/results/'
-    IMG_PATH = '/home/fabian/data/grayscale/'
+    IMG_PATH = '/home/fabian/data/TS/CrossCalibration/ImageTCL/greyscale/'
     PREDICTIONS, IMGS = load_predictions_and_images_from_raw(RESULTS, IMG_PATH)
     visualize_prediction(PREDICTIONS, IMGS)
